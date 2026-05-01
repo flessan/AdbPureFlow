@@ -1,0 +1,26 @@
+PS C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\scrcpy_core\scrcpy-win64-v3.3.4> dir
+
+
+    Directory: C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\scrcpy_core\scrcpy-win64-v3.3.4
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----          5/1/2026   1:56 AM        6641760 adb.exe
+-a----          5/1/2026   1:56 AM         108128 AdbWinApi.dll
+-a----          5/1/2026   1:56 AM          73312 AdbWinUsbApi.dll
+-a----          5/1/2026   1:56 AM        5522432 avcodec-61.dll
+-a----          5/1/2026   1:56 AM         629248 avformat-61.dll
+-a----          5/1/2026   1:56 AM        1031680 avutil-59.dll
+-a----          5/1/2026   1:56 AM           6530 icon.png
+-a----          5/1/2026   1:56 AM         215741 libusb-1.0.dll
+-a----          5/1/2026   1:56 AM              5 open_a_terminal_here.bat
+-a----          5/1/2026   1:56 AM             51 scrcpy-console.bat
+-a----          5/1/2026   1:56 AM            212 scrcpy-noconsole.vbs
+-a----          5/1/2026   1:56 AM          90980 scrcpy-server
+-a----          5/1/2026   1:56 AM         714826 scrcpy.exe
+-a----          5/1/2026   1:56 AM        1786368 SDL2.dll
+-a----          5/1/2026   1:56 AM         123392 swresample-5.dll
+
+
+PS C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\scrcpy_core\scrcpy-win64-v3.3.4>

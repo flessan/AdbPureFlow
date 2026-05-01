@@ -1,485 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADBPure - ADB Testing Made Fun</title>
+    <title>ADBPureFlow - ADB Installer & Mirror</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --blue: #2563eb;
-            --blue-dark: #1d4ed8;
-            --blue-light: #60a5fa;
-            --yellow: #fbbf24;
-            --yellow-dark: #f59e0b;
-            --white: #ffffff;
-            --gray: #f1f5f9;
-            --text: #1e293b;
-            --shadow: 0 8px 0 0 rgba(0,0,0,0.15);
-            --shadow-hover: 0 12px 0 0 rgba(0,0,0,0.15);
-        }
-
-        body {
-            font-family: 'Nunito', sans-serif;
-            background: linear-gradient(180deg, var(--gray) 0%, var(--white) 100%);
-            color: var(--text);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        /* Navigation */
-        nav {
-            background: var(--blue);
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 0 0 var(--blue-dark);
-        }
-
-        .nav-inner {
-            max-width: 1100px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            color: var(--white);
-            font-size: 1.8rem;
-            font-weight: 900;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logo-icon {
-            background: #fff;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .logo-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: var(--blue);
-        }
-
-        .github-btn {
-            background: var(--yellow);
-            color: var(--blue);
-            padding: 0.7rem 1.5rem;
-            border-radius: 50px;
-            font-weight: 700;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 4px 0 0 var(--yellow-dark);
-            transition: all 0.15s ease;
-        }
-
-        .github-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 0 0 var(--yellow-dark);
-        }
-
-        .github-btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 0 var(--yellow-dark);
-        }
-
-        .github-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }
-
-        /* Hero */
-        .hero {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .badge {
-            display: inline-block;
-            background: var(--blue-light);
-            color: var(--white);
-            padding: 0.4rem 1.2rem;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-            animation: bounce 2s ease infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-
-        h1 {
-            font-size: clamp(2.5rem, 6vw, 4rem);
-            font-weight: 900;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            color: var(--blue);
-        }
-
-        h1 span {
-            background: var(--yellow);
-            color: var(--blue);
-            padding: 0 0.3em;
-            border-radius: 8px;
-            display: inline-block;
-            transform: rotate(-2deg);
-        }
-
-        .hero p {
-            font-size: 1.3rem;
-            color: #64748b;
-            max-width: 600px;
-            margin: 0 auto 2rem;
-        }
-
-        .hero-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: var(--blue);
-            color: var(--white);
-            padding: 1.2rem 2.5rem;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 900;
-            text-decoration: none;
-            box-shadow: 0 6px 0 0 var(--blue-dark);
-            transition: all 0.15s ease;
-        }
-
-        .hero-btn:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 0 0 var(--blue-dark);
-        }
-
-        .hero-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px 0 0 var(--blue-dark);
-        }
-
-        .hero-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
-
-        /* Terminal */
-        .terminal-container {
-            text-align: left;       /* Pastikan alignment ke kiri */
-            padding-left: 0;        /* Hilangkan jarak di sisi kiri */
-            display: block;         /* Pastikan bukan flex dengan centering */
-            max-width: 700px;
-            margin: 3rem auto 0;
-        }
-
-        .terminal {
-            background: var(--text);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 12px 0 0 rgba(0,0,0,0.2);
-        }
-
-        .terminal-header {
-            background: #334155;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-        }
-
-        .dot-red { background: #ef4444; }
-        .dot-yellow { background: #fbbf24; }
-        .dot-green { background: #22c55e; }
-
-        .terminal-title {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            margin-left: auto;
-            margin-right: auto;
-            font-weight: 700;
-        }
-
-        .terminal-body {
-            padding: 1.5rem;
-            font-family: monospace;
-            font-size: 0.95rem;
-            line-height: 1.8;
-            color: #e2e8f0;
-        }
-
-        .line {
-            opacity: 0;
-            animation: popIn 0.3s ease forwards;
-        }
-
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .prompt { color: var(--yellow); }
-        .success { color: #22c55e; }
-        .warning { color: #fb923c; }
-        .info { color: var(--blue-light); }
-
-        .cursor {
-            display: inline-block;
-            width: 10px;
-            height: 18px;
-            background: var(--yellow);
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-            margin-left: 4px;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        /* Features */
-        .features {
-            background: var(--white);
-            padding: 4rem 2rem;
-        }
-
-        .features-inner {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .features h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: var(--blue);
-            margin-bottom: 3rem;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-        }
-
-        .card {
-            background: var(--gray);
-            border-radius: 24px;
-            padding: 2rem;
-            text-align: center;
-            transition: all 0.2s ease;
-            border: 4px solid transparent;
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-            border-color: var(--blue);
-        }
-
-        .card-icon {
-            width: 80px;
-            height: 80px;
-            background: var(--blue);
-            border-radius: 24px;
-            margin: 0 auto 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 0 0 var(--blue-dark);
-        }
-
-        .card-icon svg {
-            width: 40px;
-            height: 40px;
-            stroke: var(--white);
-            fill: none;
-            stroke-width: 2.5;
-        }
-
-        .card h3 {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: var(--blue);
-            margin-bottom: 0.75rem;
-        }
-
-        .card p {
-            color: #64748b;
-            font-size: 1rem;
-        }
-
-        /* CTA */
-        .cta {
-            background: var(--blue);
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .cta-inner {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .cta h2 {
-            color: var(--white);
-            font-size: 2rem;
-            font-weight: 900;
-            margin-bottom: 1rem;
-        }
-
-        .cta p {
-            color: var(--blue-light);
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-        }
-
-        .cta-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: var(--yellow);
-            color: var(--blue);
-            padding: 1.2rem 2.5rem;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 900;
-            text-decoration: none;
-            box-shadow: 0 6px 0 0 var(--yellow-dark);
-            transition: all 0.15s ease;
-        }
-
-        .cta-btn:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 0 0 var(--yellow-dark);
-        }
-
-        .cta-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px 0 0 var(--yellow-dark);
-        }
-
-        .cta-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
-
-        /* Footer */
-        footer {
-            background: var(--text);
-            color: #94a3b8;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        footer a {
-            color: var(--yellow);
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive */
-        @media (max-width: 640px) {
-            nav {
-                padding: 1rem;
-            }
-
-            .github-btn span {
-                display: none;
-            }
-
-            .hero {
-                padding: 3rem 1rem;
-            }
-
-            h1 {
-                font-size: 2rem;
-            }
-
-            .terminal-body {
-                font-size: 0.8rem;
-                padding: 1rem;
-            }
-
-            .features, .cta {
-                padding: 3rem 1rem;
-            }
-        }
-
-        /* Focus states */
-        a:focus-visible {
-            outline: 4px solid var(--yellow);
-            outline-offset: 4px;
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="./gudang/gaya.blu.css">
+    <link rel="stylesheet"
+        href="https://rawcdn.githack.com/34labs/34labs.github.io/3abf02f9baf326d7990e2705b4f2b842f02a08/cursorz.css">
 </head>
+
 <body>
     <nav>
         <div class="nav-inner">
             <a href="#" class="logo">
                 <div class="logo-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 107.27"><path d="M22.48 0h77.92c6.15 0 11.75 2.53 15.82 6.6 4.11 4.11 6.67 9.8 6.67 16.06v61.96c0 6.26-2.55 11.94-6.67 16.06-4.07 4.07-9.67 6.6-15.82 6.6H22.48c-6.15 0-11.75-2.53-15.82-6.6C2.55 96.56 0 90.88 0 84.62V22.65C0 16.39 2.55 10.7 6.66 6.59 10.73 2.53 16.33 0 22.48 0zm45.43 60.22H54.67l-1.9 6.24H40.83l14.24-37.84h12.8l14.18 37.84H69.81l-1.9-6.24zm-2.47-8.19l-4.13-13.6-4.15 13.6h8.28zM4.54 76.22c.79 3.18 2.34 6.02 4.44 8.29 3.09 3.33 7.35 5.4 12.05 5.4h80.83c.19 0 .38 0 .57-.01l1.15-.08c4.01-.44 7.62-2.39 10.33-5.31 2.1-2.26 3.65-5.1 4.44-8.28V22.65c0-4.85-2-9.28-5.21-12.49a17.95 17.95 0 00-12.73-5.28H22.48c-4.97 0-9.48 2.02-12.73 5.28-3.22 3.22-5.21 7.64-5.21 12.49v53.57z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 107.27">
+                        <path
+                            d="M22.48 0h77.92c6.15 0 11.75 2.53 15.82 6.6 4.11 4.11 6.67 9.8 6.67 16.06v61.96c0 6.26-2.55 11.94-6.67 16.06-4.07 4.07-9.67 6.6-15.82 6.6H22.48c-6.15 0-11.75-2.53-15.82-6.6C2.55 96.56 0 90.88 0 84.62V22.65C0 16.39 2.55 10.7 6.66 6.59 10.73 2.53 16.33 0 22.48 0zm45.43 60.22H54.67l-1.9 6.24H40.83l14.24-37.84h12.8l14.18 37.84H69.81l-1.9-6.24zm-2.47-8.19l-4.13-13.6-4.15 13.6h8.28zM4.54 76.22c.79 3.18 2.34 6.02 4.44 8.29 3.09 3.33 7.35 5.4 12.05 5.4h80.83c.19 0 .38 0 .57-.01l1.15-.08c4.01-.44 7.62-2.39 10.33-5.31 2.1-2.26 3.65-5.1 4.44-8.28V22.65c0-4.85-2-9.28-5.21-12.49a17.95 17.95 0 00-12.73-5.28H22.48c-4.97 0-9.48 2.02-12.73 5.28-3.22 3.22-5.21 7.64-5.21 12.49v53.57z" />
+                    </svg>
                 </div>
-                ADBPure
+                ADBPure<span style="font-size: 12px; position: relative; right: 7px; top: -12px;">.pages.dev</span>
             </a>
             <a href="https://github.com/flessan/adbpureflow" class="github-btn" target="_blank" rel="noopener">
-                <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                
-                <span>GitHub</span>
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+
+                <span>View on GitHub</span>
             </a>
         </div>
     </nav>
 
     <section class="hero">
-        <span class="badge">Open Source CLI/GUI Tool</span>
-        <h1>ADB Testing, <span>Without the Headache</span></h1>
-        <p>Automatically detect, install, launch, and clean up Android APKs. No manual package names, no leftover files!</p>
+        <span class="badge">v5.0 Now with Scrcpy Mirror</span>
+        <h1>ADB Management, <br><span class="highlight" id="typewriter">Perfected.</span><span class="cursor-h1"></span>
+        </h1>
+        <p>The ultimate drag-and-drop companion for Android developers. Install, launch, mirror, and manage devices
+            instantly without typing a single command.</p>
         <a href="#cta" class="hero-btn" target="_blank" rel="noopener">
-            Get Started
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Download Now
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
         </a>
 
         <div class="terminal-container">
@@ -488,7 +55,7 @@
                     <span class="dot dot-red"></span>
                     <span class="dot dot-yellow"></span>
                     <span class="dot dot-green"></span>
-                    <span class="terminal-title">PowerShell - ADBPureFlow</span>
+                    <span class="terminal-title">ADBPureFlow Pro - GUI Log</span>
                 </div>
                 <div class="terminal-body" id="terminal"></div>
             </div>
@@ -497,57 +64,142 @@
 
     <section class="features" id="features">
         <div class="features-inner">
-            <h2>Why do i Love It &lt;3</h2>
+            <h2>Features You'll Love</h2>
+            <p class="section-subtitle">Everything you need in a lightweight, portable package.</p>
             <div class="features-grid">
                 <div class="card">
                     <div class="card-icon">
-                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        <svg viewBox="0 0 24 24">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
                     </div>
-                    <h3>Smart Detect</h3>
-                    <p>No more manually looking up package names. ADBPure automatically extracts your APK's package identifier.</p>
+                    <h3>Screen Mirror</h3>
+                    <p>One-click mirroring powered by GoScRcPy!. No setup required, just click and view your device
+                        screen instantly.</p>
                 </div>
                 <div class="card">
                     <div class="card-icon">
-                        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <svg viewBox="0 0 24 24">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                        </svg>
                     </div>
-                    <h3>Auto Launch</h3>
-                    <p>Powered by Android Monkey, your app launches immediately after installation. Start testing faster!</p>
+                    <h3>Drag & Drop Install</h3>
+                    <p>Say goodbye to terminal commands. Drag your APK onto the window to install and launch it
+                        automatically.</p>
                 </div>
                 <div class="card">
                     <div class="card-icon">
-                        <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                        </svg>
                     </div>
-                    <h3>Clean Uninstall</h3>
-                    <p>Verified removal ensures your test device stays pristine. One command cleans up completely.</p>
+                    <h3>Smart Manager</h3>
+                    <p>Detects connected devices automatically. Uninstall packages with a simple right-click or form
+                        input.</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                    </div>
+                    <h3>Portable Engine</h3>
+                    <p>Automatically downloads Scrcpy and ADB binaries if missing. Works on Windows, Linux, and Mac (if
+                        I already have a macbook).</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="cta">
+    <section class="steps">
+        <div class="steps-inner">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Connect</h3>
+                <p>Plug in your device via USB or connect over WiFi.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Select</h3>
+                <p>Choose your target device from the dropdown list.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Action</h3>
+                <p>Drag an APK to install, or hit the Mirror button!</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-stack">
+        <h3>Built with Modern Tech</h3>
+        <div class="tech-icons">
+            <div class="tech-item">
+                <svg viewBox="0 0 24 24" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round"
+                    stroke-miterlimit="1.414">
+                    <path
+                        d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.128-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.129-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082zm12.129-2.36c-.736.187-1.239.327-1.963.514-.176.046-.187.058-.341-.117-.174-.199-.303-.327-.548-.444-.737-.362-1.45-.257-2.115.117-.789.444-1.193 1.11-1.193 2.001 0 .865.585 1.544 1.403 1.638.702.082 1.292-.176 1.76-.714.093-.117.163-.245.245-.373H10.72c-.245 0-.304-.152-.222-.35.152-.362.432-.976.596-1.279.035-.07.117-.187.269-.187h3.875c-.023.257-.023.514-.07.77-.117.77-.408 1.497-.865 2.139-.725.998-1.662 1.662-2.875 1.916-1.004.21-1.963.117-2.84-.385-.795-.455-1.304-1.11-1.544-1.986-.245-.918-.198-1.808.222-2.652.514-1.04 1.304-1.772 2.344-2.239.97-.432 1.965-.514 2.993-.235.886.245 1.597.737 2.126 1.473.09.132.046.21-.117.257z"
+                        fill-rule="nonzero" />
+                </svg>
+                <span>Go (Golang)</span>
+            </div>
+            <div class="tech-item">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                <span>Open Source</span>
+            </div>
+            <div class="tech-item">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M17.6 11.4c-.1-.1-.2-.2-.3-.2l-5.2-3c-.1-.1-.2-.1-.3-.1s-.2 0-.3.1l-5.2 3c-.1.1-.2.1-.3.2-.1.1-.1.2-.1.4v6c0 .1.1.3.1.4.1.1.2.2.3.2l5.2 3c.1.1.2.1.3.1s.2 0 .3-.1l5.2-3c.1-.1.2-.1.3-.2.1-.1.1-.2.1-.4v-6c0-.2 0-.3-.1-.4zM12 4.2L15.8 6.5 12 8.8 8.2 6.5 12 4.2zM7 13.6V8.9l4 2.3v4.7l-4-2.3zm5 2.3v-4.7l4-2.3v4.7l-4 2.3z" />
+                </svg>
+                <span>Scrcpy Inside</span>
+            </div>
+            <div class="tech-item">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6zm0 4h8v2H6zm10 0h2v2h-2zm-6-4h8v2h-8z" />
+                </svg>
+                <span>Fyne GUI</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta" id="cta">
         <div class="cta-inner">
-            <h2>Ready to Streamline Your Workflow?</h2>
-            <p>Join developers who've eliminated the friction from Android APK testing.</p>
-            <a href="https://github.com/flessan/adbpureflow" class="cta-btn" target="_blank" rel="noopener">
-                View on GitHub
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <h2>Ready to Simplify Your ADB Workflow?</h2>
+            <p>Download the latest release for your platform. No dependencies required.</p>
+            <a href="https://github.com/flessan/AdbPureFlow" class="cta-btn" target="_blank" rel="noopener">
+                Download v4
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                </svg>
             </a>
         </div>
     </section>
 
     <footer>
-        <p>Built with care by <a href="https://github.com/flessan" target="_blank" rel="noopener">Flessan</a>. Open sourced under GPL v3 License.</p>
+        <p>Built with care by <a href="https://github.com/flessan" target="_blank" rel="noopener">Flessan</a>. Open
+            sourced under GPL v3 License.</p>
     </footer>
 
     <script>
         const lines = [
-            { text: '<span class="prompt">PS C:\u{005C}Users\u{005C}fles></span> Drop your APK here: "GDIPS Reborn.apk"' },
-            { text: '<span class="warning">[1]</span> Scanning APK...' },
-            { text: '<span class="warning">[2]</span> Installing APK...' },
-            { text: '<span class="success">[3]</span> Success! Detected: com.flessan.gdi' },
-            { text: '<span class="info">[4]</span> Auto-launching application...' },
-            { text: '<span class="success">[5]</span> Done! App is now running.' },
-            { text: '<span class="warning">[6]</span> Terminate and uninstall? (y/n):<span class="cursor"></span>' }
+            { text: '<span class="info">[12:01:00]</span> Status: Ready' },
+            { text: '<span class="info">[12:01:02]</span> Scanning for devices...' },
+            { text: '<span class="success">[12:01:03]</span> Found 2 device(s).' },
+            { text: '<span class="warning">[12:01:05]</span> Target -> Pixel 7 Pro (ANDROID12345)' },
+            { text: '<span class="info">[12:01:10]</span> Processing: GDIPS_Reborn.apk' },
+            { text: '<span class="warning">[12:01:11]</span> Installing to Pixel 7 Pro...' },
+            { text: '<span class="success">[12:01:15]</span> Success! Installed & Launched: com.flessan.gdips' },
+            { text: '<span class="info">[12:01:20]</span> Preparing Scrcpy Engine...' },
+            { text: '<span class="success">[12:01:25]</span> Mirror Active. Window launched.<span class="cursor"></span>' }
         ];
 
         const terminal = document.getElementById('terminal');
@@ -558,13 +210,52 @@
             const div = document.createElement('div');
             div.className = 'line';
             div.innerHTML = lines[i].text;
-            div.style.animationDelay = (i * 0.3) + 's';
+            div.style.animationDelay = (i * 0.2) + 's';
             terminal.appendChild(div);
             i++;
-            setTimeout(addLine, 400);
+            setTimeout(addLine, 600);
         }
 
         setTimeout(addLine, 500);
+
+        // Typewriter Effect
+        const phrases = ["Perfected.", "Without the Headache.", "Made Simple.", "Drag & Drop."];
+        let phraseIndex = 0;
+        let letterIndex = phrases[0].length;
+        let isDeleting = false;
+        const typewriterElement = document.getElementById('typewriter');
+
+        function type() {
+            const currentPhrase = phrases[phraseIndex];
+
+            if (isDeleting) {
+                letterIndex--;
+            } else {
+                letterIndex++;
+            }
+
+            typewriterElement.textContent = currentPhrase.substring(0, letterIndex);
+
+            let typeSpeed = 80;
+            if (isDeleting) {
+                typeSpeed /= 2; // Delete faster
+            }
+
+            if (!isDeleting && letterIndex === currentPhrase.length) {
+                typeSpeed = 2000; // Pause at end of phrase
+                isDeleting = true;
+            } else if (isDeleting && letterIndex === 0) {
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % phrases.length;
+                typeSpeed = 400; // Pause before typing new word
+            }
+
+            setTimeout(type, typeSpeed);
+        }
+
+        // Start typing effect after a short delay
+        setTimeout(() => { isDeleting = true; type(); }, 2000);
     </script>
 </body>
+
 </html>

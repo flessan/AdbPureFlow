@@ -18,15 +18,15 @@ func main() {
 	// 1. App Initialization
 	myApp := app.NewWithID("com.thio.adbpureflow")
 	myApp.Settings().SetTheme(theme.DarkTheme())
-	myWindow := myApp.NewWindow("ADBPureFlow Pro v4.0")
-	myWindow.Resize(fyne.NewSize(700, 550))
+	myWindow := myApp.NewWindow("ADBPureFlow Pro v5.0 (Mirror Edition)")
+	myWindow.Resize(fyne.NewSize(750, 600))
 
 	// Backend Logic
 	adbLogic := NewApp()
 
 	// 2. UI Components
 	title := widget.NewLabelWithStyle("ADBPureFlow Pro", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	subtitle := widget.NewLabelWithStyle("Universal ADB Installer & Manager", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
+	subtitle := widget.NewLabelWithStyle("Universal ADB Installer, Manager & Mirror", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
 
 	// Status Bar
 	statusLabel := widget.NewLabel("Status: Ready")
@@ -35,17 +35,18 @@ func main() {
 
 	// Log Area
 	logArea := widget.NewMultiLineEntry()
-	logArea.SetPlaceHolder("System Logs:\n1. Connect your device.\n2. Drag & Drop APK or Click Open.")
+	logArea.SetPlaceHolder("System Logs:\n1. Connect your device.\n2. Drag & Drop APK or Click Open.\n3. Use Mirror button to view screen.")
 	logArea.Wrapping = fyne.TextWrapBreak
 	logArea.Disable()
 
-	// --- DEFINE HELPERS FIRST (Fix for undefined error) ---
+	// --- DEFINE HELPERS FIRST ---
 
 	// Thread-safe Logger
 	appendLog := func(msg string) {
 		fyne.Do(func() {
 			timestamp := time.Now().Format("15:04:05")
-			logArea.SetText(fmt.Sprintf("%s [%s] %s\n", logArea.Text, timestamp, msg))
+			currentText := logArea.Text
+			logArea.SetText(fmt.Sprintf("%s [%s] %s\n", currentText, timestamp, msg))
 		})
 	}
 
@@ -61,7 +62,7 @@ func main() {
 		})
 	}
 
-	// Device Selector (Defined after updateStatus)
+	// Device Selector
 	deviceSelect := widget.NewSelect([]string{"No Device"}, func(s string) {
 		if s == "No Device" {
 			updateStatus("Waiting for device...", false)
@@ -71,16 +72,14 @@ func main() {
 	})
 	deviceSelect.PlaceHolder = "Select Device..."
 
-	// Process APK Logic (Defined after deviceSelect and appendLog)
+	// Process APK Logic
 	processAPK := func(path string) {
-		// Robust Path Cleaning for Windows
 		cleanPath := filepath.FromSlash(path)
-		// Fix specific Fyne Windows URI issue (e.g. /C:/Users -> C:/Users)
+		// Fix specific Fyne Windows URI issue
 		if len(cleanPath) > 2 && cleanPath[0] == '\\' && cleanPath[2] == ':' {
 			cleanPath = cleanPath[1:]
 		}
 
-		// Check if device selected
 		selectedDevice := deviceSelect.Selected
 		if selectedDevice == "" || selectedDevice == "No Device" {
 			dialog.ShowError(fmt.Errorf("no device selected"), myWindow)
@@ -88,7 +87,6 @@ func main() {
 			return
 		}
 
-		// Extract Serial ID from "Model (Serial)" string
 		parts := strings.Split(selectedDevice, "(")
 		if len(parts) < 2 {
 			return
@@ -123,7 +121,7 @@ func main() {
 					appendLog("No devices found.")
 				} else {
 					deviceSelect.Options = devices
-					deviceSelect.SetSelectedIndex(0) // Auto select first
+					deviceSelect.SetSelectedIndex(0)
 					appendLog(fmt.Sprintf("Found %d device(s).", len(devices)))
 				}
 			})
@@ -166,6 +164,36 @@ func main() {
 			}, myWindow)
 	}
 
+	// NEW: Mirror Screen Logic (Scrcpy)
+	startMirror := func() {
+		selectedDevice := deviceSelect.Selected
+		if selectedDevice == "" || selectedDevice == "No Device" {
+			dialog.ShowError(fmt.Errorf("no device selected"), myWindow)
+			return
+		}
+
+		parts := strings.Split(selectedDevice, "(")
+		serial := strings.TrimSuffix(parts[len(parts)-1], ")")
+
+		appendLog("Preparing Scrcpy Engine...")
+		updateStatus("Checking/Downloading Scrcpy...", true)
+
+		go func() {
+			// This function handles download if missing, then runs scrcpy
+			err := adbLogic.StartScrcpy(serial, func(msg string) {
+				appendLog(msg)
+			})
+
+			if err != nil {
+				appendLog("Mirror Error: " + err.Error())
+				updateStatus("Mirror Failed", false)
+			} else {
+				appendLog("Scrcpy launched successfully.")
+				updateStatus("Mirroring Active", false)
+			}
+		}()
+	}
+
 	// 3. Toolbar
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.FileIcon(), func() {
@@ -180,6 +208,9 @@ func main() {
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.ComputerIcon(), refreshDevices),
 		widget.NewToolbarAction(theme.DeleteIcon(), uninstallApp),
+		widget.NewToolbarSeparator(),
+		// NEW MIRROR BUTTON
+		widget.NewToolbarAction(theme.MediaPlayIcon(), startMirror),
 		widget.NewToolbarSpacer(),
 		widget.NewToolbarAction(theme.ViewRefreshIcon(), func() { logArea.SetText("") }),
 	)
@@ -210,7 +241,6 @@ func main() {
 	// 5. Event Bindings
 	myWindow.SetContent(mainContent)
 
-	// Use Window SetOnDropped (Fix for container OnDropped error)
 	myWindow.SetOnDropped(func(pos fyne.Position, uris []fyne.URI) {
 		for _, uri := range uris {
 			processAPK(uri.Path())

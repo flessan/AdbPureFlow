@@ -1,0 +1,25 @@
+PS C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\abd> dir
+
+
+    Directory: C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\abd
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----         4/29/2026   7:48 PM        8485016 adb.exe
+-a----         4/29/2026   7:48 PM         108184 AdbWinApi.dll
+-a----         4/29/2026   7:48 PM          73368 AdbWinUsbApi.dll
+-a----         4/29/2026   7:48 PM         446104 etc1tool.exe
+-a----         4/29/2026   7:48 PM        2199704 fastboot.exe
+-a----         4/29/2026   7:48 PM          52888 hprof-conv.exe
+-a----         4/29/2026   7:48 PM         243016 libwinpthread-1.dll
+-a----         4/29/2026   7:48 PM         464024 make_f2fs.exe
+-a----         4/29/2026   7:48 PM         464024 make_f2fs_casefold.exe
+-a----         4/29/2026   7:48 PM           1157 mke2fs.conf
+-a----         4/29/2026   7:48 PM         753816 mke2fs.exe
+-a----         4/29/2026   7:48 PM        1154858 NOTICE.txt
+-a----         4/29/2026   7:48 PM             38 source.properties
+-a----         4/29/2026   7:48 PM        3028632 sqlite3.exe
+
+
+PS C:\Users\thios\Documents\GoScRcPy!\AdbPureFlow\GUI\abd>
