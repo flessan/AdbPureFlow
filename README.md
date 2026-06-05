@@ -35,7 +35,7 @@ Lightweight Go utility to automate Android APK lifecycle: setup ADB, install, au
 
 1.  **Clone & Run**:
     ```bash
-    git clone https://github.com
+    git clone https://github.com/flessan/AdbPureFlow.git
     cd AdbPureFlow
     go run main.go
     ```
