@@ -7,204 +7,396 @@ on:
       - arena/*
     tags:
       - "v*"
+
   pull_request:
     branches:
       - main
 
+
 jobs:
+
+# =====================================
+# LINT
+# =====================================
+
   lint-and-format:
+
     name: Lint & Format Check
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Set up Go
+      - uses: actions/checkout@v4
+
+
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
           cache: true
+          cache-dependency-path: |
+            CLI/go.sum
+            GUI/go.sum
 
-      - name: Install GUI Dependencies
+
+      - name: Install Fyne dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt update
+          sudo apt install -y \
             libgl1-mesa-dev \
             libegl1-mesa-dev \
             xorg-dev \
             libxxf86vm-dev
 
-      - name: Verify Go Formatting
+
+      - name: Format Check
         run: |
-          gofmt -w .
+
+          gofmt -w CLI GUI
+
           if [ -n "$(git status --porcelain)" ]; then
-            echo "Go code is not formatted! The following files need formatting:"
-            git status --porcelain
+            echo "Code is not formatted"
             git diff
             exit 1
           fi
 
-      - name: Go Vet
+
+      - name: Vet CLI
         run: |
           cd CLI
           go vet ./...
 
-          cd ../GUI
+
+      - name: Vet GUI
+        run: |
+          cd GUI
           go vet ./...
 
+
+
+# =====================================
+# TEST
+# =====================================
+
   test-suite:
-    name: Unit & Integration Tests
+
+    name: Unit Tests
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Set up Go
+      - uses: actions/checkout@v4
+
+
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
           cache: true
+          cache-dependency-path: |
+            CLI/go.sum
+            GUI/go.sum
 
-      - name: Install GUI Dependencies
+
+      - name: Install Fyne dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt update
+          sudo apt install -y \
             libgl1-mesa-dev \
             libegl1-mesa-dev \
             xorg-dev \
             libxxf86vm-dev
 
-      - name: Run Tests & Generate Coverage
+
+      - name: Test CLI
         run: |
           cd CLI
-          go test -v -race -coverprofile=coverage-cli.out ./...
+          go test -v -race ./...
 
-          cd ../GUI
-          go test -v -race -coverprofile=coverage-gui.out ./...
 
-      - name: Upload Coverage Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage
-          path: |
-            CLI/coverage-cli.out
-            GUI/coverage-gui.out
+      - name: Test GUI
+        run: |
+          cd GUI
+          go test -v -race ./...
+
+
+
+# =====================================
+# BUILD
+# =====================================
 
   multi-platform-build:
-    name: Build Multi-Platform Binaries
+
+    name: Build Multi Platform
     needs:
       - lint-and-format
       - test-suite
-    runs-on: ubuntu-latest
+
 
     strategy:
+
+      fail-fast: false
+
       matrix:
+
         include:
-          - os: windows
-            arch: amd64
+
+
+          # ===================
+          # CLI
+          # ===================
+
+          - name: cli-windows
+            runner: ubuntu-latest
             goos: windows
             goarch: amd64
             suffix: ".exe"
 
-          - os: linux
-            arch: amd64
+
+          - name: cli-linux
+            runner: ubuntu-latest
             goos: linux
             goarch: amd64
             suffix: ""
 
-          - os: darwin
-            arch: amd64
+
+          - name: cli-macos
+            runner: ubuntu-latest
             goos: darwin
             goarch: amd64
             suffix: ""
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Set up Go
+
+          # ===================
+          # GUI
+          # ===================
+
+          - name: gui-windows
+            runner: windows-latest
+            goos: windows
+            goarch: amd64
+            suffix: ".exe"
+
+
+          - name: gui-linux
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            suffix: ""
+
+
+          - name: gui-macos
+            runner: macos-latest
+            goos: darwin
+            goarch: amd64
+            suffix: ""
+
+
+
+    runs-on: ${{ matrix.runner }}
+
+
+
+    steps:
+
+
+      - uses: actions/checkout@v4
+
+
+
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
+
           go-version: "1.21"
+
           cache: true
 
-      - name: Install Linux Build Dependencies
+          cache-dependency-path: |
+            CLI/go.sum
+            GUI/go.sum
+
+
+
+      # Linux Fyne dependencies
+
+      - name: Linux OpenGL dependencies
+
         if: matrix.goos == 'linux'
+
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+
+          sudo apt update
+
+          sudo apt install -y \
             libgl1-mesa-dev \
             libegl1-mesa-dev \
             xorg-dev \
             libxxf86vm-dev
 
-      - name: Compile CLI Binary
+
+
+# ===================
+# CLI BUILD
+# ===================
+
+      - name: Build CLI
+
+        if: startsWith(matrix.name,'cli')
+
+        shell: bash
+
         env:
+
           GOOS: ${{ matrix.goos }}
+
           GOARCH: ${{ matrix.goarch }}
+
           CGO_ENABLED: 0
+
+
         run: |
+
           cd CLI
-          go build -ldflags="-s -w" \
+
+          go build \
+            -ldflags="-s -w" \
             -o adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
-            main.go
+            .
 
-      - name: Compile GUI Binary
+
+
+# ===================
+# GUI BUILD
+# ===================
+
+      - name: Build GUI
+
+        if: startsWith(matrix.name,'gui')
+
+
+        shell: bash
+
+
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: ${{ matrix.goos == 'linux' && '1' || '0' }}
-        run: |
-          cd GUI
-          go build -ldflags="-s -w" \
-            -o adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
-            main.go app.go
 
-      - name: Upload CLI Build Artifact
+          GOOS: ${{ matrix.goos }}
+
+          GOARCH: ${{ matrix.goarch }}
+
+          CGO_ENABLED: 1
+
+
+
+        run: |
+
+          cd GUI
+
+
+          FLAGS="-s -w"
+
+
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+
+            FLAGS="$FLAGS -H windowsgui"
+
+          fi
+
+
+
+          go build \
+            -ldflags="$FLAGS" \
+            -o adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
+            .
+
+
+
+# ===================
+# ARTIFACTS
+# ===================
+
+
+      - name: Upload CLI
+
+        if: startsWith(matrix.name,'cli')
+
         uses: actions/upload-artifact@v4
+
         with:
+
           name: adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}
+
           path: CLI/adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
-      - name: Upload GUI Build Artifact
+
+
+      - name: Upload GUI
+
+        if: startsWith(matrix.name,'gui')
+
         uses: actions/upload-artifact@v4
+
         with:
+
           name: adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}
+
           path: GUI/adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
+
+
+# =====================================
+# RELEASE
+# =====================================
+
+
   auto-release:
-    name: Auto Release Tagged Commit
+
+    name: Auto Release
+
     needs: multi-platform-build
+
+    if: startsWith(github.ref,'refs/tags/v')
+
     runs-on: ubuntu-latest
 
-    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Download All Artifacts
+
+      - uses: actions/checkout@v4
+
+
+      - name: Download artifacts
+
         uses: actions/download-artifact@v4
-        with:
-          path: dist-artifacts
 
-      - name: Prepare Assets for Release
+        with:
+
+          path: dist
+
+
+
+      - name: Prepare release
+
         run: |
+
           mkdir release-assets
 
-          find dist-artifacts -type f -name "adbpureflow-*" \
+          find dist -type f -name "adbpureflow-*" \
             -exec cp {} release-assets/ \;
 
-          ls -la release-assets
 
-      - name: Create GitHub Release
+      - name: Create Release
+
         uses: softprops/action-gh-release@v2
+
         with:
+
           files: release-assets/*
+
           generate_release_notes: true
-          draft: false
-          prerelease: false
+
         env:
+
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,4 @@
-module adbpureflow
+module github.com/flessan/AdbPureFlow/GUI
 
 go 1.21
 

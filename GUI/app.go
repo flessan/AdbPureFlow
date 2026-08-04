@@ -35,38 +35,78 @@ const scrcpyFolder = "scrcpy_core"
 
 // --- HELPER FUNCTIONS ---
 
+var adbURLs = map[string]string{
+	"windows": "https://dl.google.com/android/repository/platform-tools-latest-windows.zip",
+	"darwin":  "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip",
+	"linux":   "https://dl.google.com/android/repository/platform-tools-latest-linux.zip",
+}
+
+const adbFolder = "adb_engine"
+
 func getADBPath() string {
 	adbName := "adb"
+
 	if runtime.GOOS == "windows" {
 		adbName = "adb.exe"
 	}
 
-	ex, err := os.Executable()
-	if err == nil {
-		exDir := filepath.Dir(ex)
-
-		// 1. Check in scrcpy folder if it exists
-		scrcpyPath := findScrcpyFolder(filepath.Join(exDir, scrcpyFolder))
-		if scrcpyPath != "" {
-			adbPath := filepath.Join(scrcpyPath, adbName)
-			if _, err := os.Stat(adbPath); err == nil {
-				return adbPath
-			}
-		}
-
-		// 2. Check in standard local folder
-		localPath := filepath.Join(exDir, "adb", adbName)
-		if _, err := os.Stat(localPath); err == nil {
-			return localPath
-		}
-
-		// 3. Legacy check (potential typo)
-		localPathAbd := filepath.Join(exDir, "abd", adbName)
-		if _, err := os.Stat(localPathAbd); err == nil {
-			return localPathAbd
-		}
+	base, err := os.Getwd()
+	if err != nil {
+		base = "."
 	}
-	return adbName // Fallback to system PATH
+
+	localADB := filepath.Join(
+		base,
+		adbFolder,
+		"platform-tools",
+		adbName,
+	)
+
+	if _, err := os.Stat(localADB); err == nil {
+		return localADB
+	}
+
+	// check system adb
+	if path, err := exec.LookPath(adbName); err == nil {
+		return path
+	}
+
+	// auto download
+	url, ok := adbURLs[runtime.GOOS]
+	if !ok {
+		return adbName
+	}
+
+	fmt.Println("Downloading ADB engine...")
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return adbName
+	}
+	defer resp.Body.Close()
+
+	tmp := filepath.Join(base, "adb.zip")
+
+	f, err := os.Create(tmp)
+	if err != nil {
+		return adbName
+	}
+
+	io.Copy(f, resp.Body)
+	f.Close()
+
+	err = unzip(tmp, adbFolder)
+	os.Remove(tmp)
+
+	if err != nil {
+		return adbName
+	}
+
+	if _, err := os.Stat(localADB); err == nil {
+		return localADB
+	}
+
+	return adbName
 }
 
 // Unified Command Runner
@@ -184,7 +224,13 @@ func parsePackages(output string) map[string]bool {
 // --- SCRCPY FEATURES ---
 
 func (a *App) StartScrcpy(serial string, logFunc func(string)) error {
-	baseDir, err := os.Getwd()
+	exe, err := os.Executable()
+
+	baseDir := "."
+
+	if err == nil {
+		baseDir = filepath.Dir(exe)
+	}
 	if err != nil {
 		baseDir = "."
 	}

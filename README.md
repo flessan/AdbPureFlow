@@ -1,9 +1,9 @@
-# ADBPureFlow Pro 🚀
+# ADBPureFlow, 4devs,2devs.
 
-[![Build & Test](https://github.com/34labs/adb-dev/actions/workflows/ci.yml/badge.svg)](https://github.com/34labs/adb-dev/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/34labs/adb-dev?filename=GUI%2Fgo.mod)](https://go.dev/)
-[![Release](https://img.shields.io/github/v/release/34labs/adb-dev)](https://github.com/34labs/adb-dev/releases)
-[![License](https://img.shields.io/github/license/34labs/adb-dev)](./LICENSE)
+[![Build & Test](https://github.com/flessan/adbpureflow/actions/workflows/ci.yml/badge.svg)](https://github.com/flessan/adbpureflow/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/flessan/adbpureflow?filename=GUI%2Fgo.mod)](https://go.dev/)
+[![Release](https://img.shields.io/github/v/release/flessan/adbpureflow)](https://github.com/flessan/adbpureflow/releases)
+[![License](https://img.shields.io/github/license/flessan/adbpureflow)](./LICENSE)
 [![Security Policy](https://img.shields.io/badge/Security-Supported-brightgreen.svg)](./SECURITY.md)
 
 An elegant, portable, cross-platform utility built in **Go** to completely automate the Android APK lifecycle: automatically download standard ADB binaries, run high-speed screen mirroring, detect newly installed package IDs without guesswork, and perform secure uninstalls.
@@ -56,7 +56,7 @@ ADBPureFlow functions as a fast, high-performance mediator between your machine 
 ADBPureFlow is shipped as a portable, single-command tool requiring **zero pre-existing configurations**.
 
 ### Method 1: Using Compiled Release Binaries (Recommended)
-1. Head over to the [GitHub Releases](https://github.com/34labs/adb-dev/releases) tab.
+1. Head over to the [GitHub Releases](https://github.com/flessan/adbpureflow/releases) tab.
 2. Download the binary matching your platform:
    - **Windows:** `adbpureflow-gui-windows-amd64.exe` / `adbpureflow-cli-windows-amd64.exe`
    - **macOS:** `adbpureflow-gui-darwin-amd64` / `adbpureflow-cli-darwin-amd64`
