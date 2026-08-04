@@ -21,7 +21,7 @@ func NewApp() *App {
 	return &App{}
 }
 
-// Mapping download Scrcpy (v3.3.4)
+// Scrcpy release download mapping for version 3.3.4
 var downloadURLs = map[string]string{
 	"windows-amd64": "https://github.com/Genymobile/scrcpy/releases/download/v3.3.4/scrcpy-win64-v3.3.4.zip",
 	"windows-386":   "https://github.com/Genymobile/scrcpy/releases/download/v3.3.4/scrcpy-win32-v3.3.4.zip",
@@ -36,28 +36,37 @@ const scrcpyFolder = "scrcpy_core"
 // --- HELPER FUNCTIONS ---
 
 func getADBPath() string {
+	adbName := "adb"
+	if runtime.GOOS == "windows" {
+		adbName = "adb.exe"
+	}
+
 	ex, err := os.Executable()
 	if err == nil {
-		// Cek di folder scrcpy dulu (jika sudah ada)
-		scrcpyPath := findScrcpyFolder(filepath.Join(filepath.Dir(ex), scrcpyFolder))
+		exDir := filepath.Dir(ex)
+		
+		// 1. Check in scrcpy folder if it exists
+		scrcpyPath := findScrcpyFolder(filepath.Join(exDir, scrcpyFolder))
 		if scrcpyPath != "" {
-			adbPath := filepath.Join(scrcpyPath, "adb.exe") // Windows centric, could add logic for others
+			adbPath := filepath.Join(scrcpyPath, adbName)
 			if _, err := os.Stat(adbPath); err == nil {
 				return adbPath
 			}
 		}
 
-		// Cek di folder lokal standar
-		localPath := filepath.Join(filepath.Dir(ex), "./adb/adb.exe")
+		// 2. Check in standard local folder
+		localPath := filepath.Join(exDir, "adb", adbName)
 		if _, err := os.Stat(localPath); err == nil {
 			return localPath
 		}
-		localPathAbd := filepath.Join(filepath.Dir(ex), "./abd/adb.exe") // Legacy check typo
+
+		// 3. Legacy check (potential typo)
+		localPathAbd := filepath.Join(exDir, "abd", adbName)
 		if _, err := os.Stat(localPathAbd); err == nil {
 			return localPathAbd
 		}
 	}
-	return "adb" // Fallback to system PATH
+	return adbName // Fallback to system PATH
 }
 
 // Unified Command Runner
@@ -126,6 +135,7 @@ func (a *App) RunADBPure(apkPath, serial string) string {
 		return baseArgs
 	}
 
+	// Fetch installed packages beforehand
 	beforeOut, _ := runCommand(adb, cmdArgs("shell", "pm", "list", "packages", "-3")...)
 	beforePackages := parsePackages(beforeOut)
 
@@ -138,6 +148,7 @@ func (a *App) RunADBPure(apkPath, serial string) string {
 		return fmt.Sprintf("Install Failed: %s", strings.TrimSpace(resultStr))
 	}
 
+	// Fetch installed packages after
 	afterOut, _ := runCommand(adb, cmdArgs("shell", "pm", "list", "packages", "-3")...)
 	afterPackages := parsePackages(afterOut)
 
@@ -150,7 +161,7 @@ func (a *App) RunADBPure(apkPath, serial string) string {
 	}
 
 	if newPackageID != "" {
-		runCommand(adb, cmdArgs("shell", "monkey", "-p", newPackageID, "-c", "android.intent.category.LAUNCHER", "1")...)
+		_, _ = runCommand(adb, cmdArgs("shell", "monkey", "-p", newPackageID, "-c", "android.intent.category.LAUNCHER", "1")...)
 		return fmt.Sprintf("Success! Installed & Launched: %s", newPackageID)
 	}
 
@@ -173,8 +184,16 @@ func parsePackages(output string) map[string]bool {
 // --- SCRCPY FEATURES ---
 
 func (a *App) StartScrcpy(serial string, logFunc func(string)) error {
-	baseDir, _ := os.Getwd()
+	baseDir, err := os.Getwd()
+	if err != nil {
+		baseDir = "."
+	}
 	targetDir := filepath.Join(baseDir, scrcpyFolder)
+
+	// Ensure scrcpy Folder Root Exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target folder: %v", err)
+	}
 
 	// 1. Find or Download
 	scrcpyPath := findScrcpyFolder(targetDir)
@@ -207,18 +226,16 @@ func (a *App) StartScrcpy(serial string, logFunc func(string)) error {
 
 	fullPath := filepath.Join(scrcpyPath, execName)
 
-	// Set executable permission for Linux/Mac
+	// Set executable permissions for Unix-like systems
 	if runtime.GOOS != "windows" {
-		os.Chmod(fullPath, 0755)
-		// Also chmod adb inside if needed
-		os.Chmod(filepath.Join(scrcpyPath, "adb"), 0755)
+		_ = os.Chmod(fullPath, 0755)
+		_ = os.Chmod(filepath.Join(scrcpyPath, "adb"), 0755)
 	}
 
 	// Run in background
 	cmd := exec.Command(fullPath, "-s", serial, "--always-on-top", "--window-title", "ADBPureFlow-Mirror")
 	cmd.Dir = scrcpyPath // Set working directory
 
-	// We don't wait for scrcpy to finish, just start it
 	return cmd.Start()
 }
 
@@ -227,19 +244,27 @@ func findScrcpyFolder(root string) string {
 	if err != nil {
 		return ""
 	}
+	
+	execName := "scrcpy"
+	if runtime.GOOS == "windows" {
+		execName = "scrcpy.exe"
+	}
+
 	for _, f := range files {
 		if f.IsDir() && (strings.Contains(f.Name(), "scrcpy-") || f.Name() == "bin") {
 			// Check if executable exists inside
 			subPath := filepath.Join(root, f.Name())
-			execName := "scrcpy"
-			if runtime.GOOS == "windows" {
-				execName = "scrcpy.exe"
-			}
 			if _, err := os.Stat(filepath.Join(subPath, execName)); err == nil {
 				return subPath
 			}
 		}
 	}
+	
+	// Fallback check if scrcpy is directly in the folder
+	if _, err := os.Stat(filepath.Join(root, execName)); err == nil {
+		return root
+	}
+
 	return ""
 }
 
@@ -248,7 +273,7 @@ func downloadAndSetup(url string, osType string, destRoot string, logFunc func(s
 	if osType == "windows" {
 		ext = ".zip"
 	}
-	tempFile := "download_temp" + ext
+	tempFile := filepath.Join(destRoot, "download_temp"+ext)
 
 	logFunc("Connecting to GitHub...")
 	resp, err := http.Get(url)
@@ -257,11 +282,23 @@ func downloadAndSetup(url string, osType string, destRoot string, logFunc func(s
 	}
 	defer resp.Body.Close()
 
-	f, _ := os.Create(tempFile)
-	io.Copy(f, resp.Body)
-	f.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received bad status code: %s", resp.Status)
+	}
 
-	logFunc("Extracting engine...")
+	f, err := os.Create(tempFile)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %v", err)
+	}
+	
+	_, err = io.Copy(f, resp.Body)
+	f.Close()
+	if err != nil {
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to save download: %v", err)
+	}
+
+	logFunc("Extracting engine components...")
 	if osType == "windows" {
 		err = unzip(tempFile, destRoot)
 	} else {
@@ -278,28 +315,73 @@ func unzip(src, dest string) error {
 	}
 	defer r.Close()
 
+	destAbs, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
+		
+		// Prevent Zip Slip vulnerability
+		fpathAbs, err := filepath.Abs(fpath)
+		if err != nil {
+			return err
+		}
+		if !strings.HasPrefix(fpathAbs, destAbs+string(filepath.Separator)) && fpathAbs != destAbs {
+			return fmt.Errorf("illegal file path in zip: %s", f.Name)
+		}
+
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(fpath, os.ModePerm)
+			if err := os.MkdirAll(fpath, 0755); err != nil {
+				return err
+			}
 			continue
 		}
-		os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
-		out, _ := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-		rc, _ := f.Open()
-		io.Copy(out, rc)
+		
+		if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
+			return err
+		}
+		
+		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+		
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			return err
+		}
+		
+		_, err = io.Copy(out, rc)
 		out.Close()
 		rc.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func untar(src, dest string) error {
-	f, _ := os.Open(src)
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
-	gzr, _ := gzip.NewReader(f)
+	
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
 	defer gzr.Close()
 	tr := tar.NewReader(gzr)
+
+	destAbs, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
 
 	for {
 		header, err := tr.Next()
@@ -311,13 +393,34 @@ func untar(src, dest string) error {
 		}
 
 		target := filepath.Join(dest, header.Name)
+		
+		// Prevent Tar Slip vulnerability
+		targetAbs, err := filepath.Abs(target)
+		if err != nil {
+			return err
+		}
+		if !strings.HasPrefix(targetAbs, destAbs+string(filepath.Separator)) && targetAbs != destAbs {
+			return fmt.Errorf("illegal file path in tar: %s", header.Name)
+		}
+
 		switch header.Typeflag {
 		case tar.TypeDir:
-			os.MkdirAll(target, 0755)
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
 		case tar.TypeReg:
-			f, _ := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			io.Copy(f, tr)
-			f.Close()
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(outFile, tr)
+			outFile.Close()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
