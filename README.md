@@ -32,14 +32,14 @@ ADBPureFlow functions as a fast, high-performance mediator between your machine 
        +-------+-----------------------------+-------+
                |                             |
                v (File Drop)                 v (Toolbar Action)
-+--------------+--------------+     +--------+--------------+
-|     Automated Installer    |     |    Scrcpy Mirroring   |
++---------------+--------------+     +--------+--------------+
+|     Automated Installer      |     |    Scrcpy Mirroring   |
 |                              |     |                       |
 | 1. Audits existing packages  |     | 1. Query device port  |
 | 2. Standard ADB install -r-d |     | 2. Run high-FPS stream|
 | 3. Snapshot Diff -> App ID   |     | 3. Set custom title   |
 | 4. Auto-Launch via Monkey    |     |                       |
-+--------------+--------------+     +--------+--------------+
++--------------+--------------+      +-------+---------------+
                |                             |
                +--------------+--------------+
                               |
