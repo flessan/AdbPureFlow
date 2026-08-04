@@ -1,29 +1,42 @@
 name: CI/CD Pipeline
+
 on:
   push:
     branches:
       - main
       - arena/*
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
     branches:
       - main
+
 jobs:
   lint-and-format:
     name: Lint & Format Check
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.21"
           cache: true
+
+      - name: Install GUI Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            xorg-dev \
+            libxxf86vm-dev
+
       - name: Verify Go Formatting
         run: |
-          # Automatically format and check for diffs
           gofmt -w .
           if [ -n "$(git status --porcelain)" ]; then
             echo "Go code is not formatted! The following files need formatting:"
@@ -31,34 +44,46 @@ jobs:
             git diff
             exit 1
           fi
+
       - name: Go Vet
         run: |
-          cd CLI && go vet ./...
-          cd ../GUI && go vet ./...
+          cd CLI
+          go vet ./...
+
+          cd ../GUI
+          go vet ./...
+
   test-suite:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.21"
           cache: true
-      - name: Install Graphical Dependencies (For GUI/Fyne)
+
+      - name: Install GUI Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libegl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            xorg-dev \
+            libxxf86vm-dev
+
       - name: Run Tests & Generate Coverage
         run: |
-          # Test CLI
           cd CLI
           go test -v -race -coverprofile=coverage-cli.out ./...
-          
-          # Test GUI
+
           cd ../GUI
           go test -v -race -coverprofile=coverage-gui.out ./...
+
       - name: Upload Coverage Results
         uses: actions/upload-artifact@v4
         with:
@@ -66,48 +91,55 @@ jobs:
           path: |
             CLI/coverage-cli.out
             GUI/coverage-gui.out
+
   multi-platform-build:
     name: Build Multi-Platform Binaries
-    needs: [lint-and-format, test-suite]
+    needs:
+      - lint-and-format
+      - test-suite
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         include:
-          # Windows AMD64
           - os: windows
             arch: amd64
             goos: windows
             goarch: amd64
-            suffix: .exe
-          # Linux AMD64
+            suffix: ".exe"
+
           - os: linux
             arch: amd64
             goos: linux
             goarch: amd64
             suffix: ""
-          # macOS AMD64
+
           - os: darwin
             arch: amd64
             goos: darwin
             goarch: amd64
             suffix: ""
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.21"
           cache: true
-      - name: Install Build Dependencies (Linux)
+
+      - name: Install Linux Build Dependencies
         if: matrix.goos == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libegl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev
-      - name: Install Build Dependencies (macOS)
-        if: matrix.goos == 'darwin'
-        run: |
-          echo "macOS native compilation libraries included by default in Runner"
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            xorg-dev \
+            libxxf86vm-dev
+
       - name: Compile CLI Binary
         env:
           GOOS: ${{ matrix.goos }}
@@ -115,46 +147,59 @@ jobs:
           CGO_ENABLED: 0
         run: |
           cd CLI
-          go build -ldflags="-s -w" -o adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} main.go
-      - name: Compile GUI Binary (CGO Enabled where required)
+          go build -ldflags="-s -w" \
+            -o adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
+            main.go
+
+      - name: Compile GUI Binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: ${{ matrix.goos == 'windows' && '0' || '1' }}
+          CGO_ENABLED: ${{ matrix.goos == 'linux' && '1' || '0' }}
         run: |
           cd GUI
-          # Fyne UI compiled binary
-          go build -ldflags="-s -w" -o adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} main.go app.go
+          go build -ldflags="-s -w" \
+            -o adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
+            main.go app.go
+
       - name: Upload CLI Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}
           path: CLI/adbpureflow-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+
       - name: Upload GUI Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}
           path: GUI/adbpureflow-gui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+
   auto-release:
     name: Auto Release Tagged Commit
     needs: multi-platform-build
     runs-on: ubuntu-latest
+
     if: startsWith(github.ref, 'refs/tags/v')
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist-artifacts
+
       - name: Prepare Assets for Release
         run: |
           mkdir release-assets
-          # Find all binaries recursively and rename/move them to release-assets folder
-          find dist-artifacts/ -type f -name "adbpureflow-*" -exec cp {} release-assets/ \;
-          ls -la release-assets/
+
+          find dist-artifacts -type f -name "adbpureflow-*" \
+            -exec cp {} release-assets/ \;
+
+          ls -la release-assets
+
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
