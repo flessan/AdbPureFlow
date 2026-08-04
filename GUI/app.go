@@ -44,7 +44,7 @@ func getADBPath() string {
 	ex, err := os.Executable()
 	if err == nil {
 		exDir := filepath.Dir(ex)
-		
+
 		// 1. Check in scrcpy folder if it exists
 		scrcpyPath := findScrcpyFolder(filepath.Join(exDir, scrcpyFolder))
 		if scrcpyPath != "" {
@@ -244,7 +244,7 @@ func findScrcpyFolder(root string) string {
 	if err != nil {
 		return ""
 	}
-	
+
 	execName := "scrcpy"
 	if runtime.GOOS == "windows" {
 		execName = "scrcpy.exe"
@@ -259,7 +259,7 @@ func findScrcpyFolder(root string) string {
 			}
 		}
 	}
-	
+
 	// Fallback check if scrcpy is directly in the folder
 	if _, err := os.Stat(filepath.Join(root, execName)); err == nil {
 		return root
@@ -290,7 +290,7 @@ func downloadAndSetup(url string, osType string, destRoot string, logFunc func(s
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file: %v", err)
 	}
-	
+
 	_, err = io.Copy(f, resp.Body)
 	f.Close()
 	if err != nil {
@@ -322,7 +322,7 @@ func unzip(src, dest string) error {
 
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
-		
+
 		// Prevent Zip Slip vulnerability
 		fpathAbs, err := filepath.Abs(fpath)
 		if err != nil {
@@ -338,22 +338,22 @@ func unzip(src, dest string) error {
 			}
 			continue
 		}
-		
+
 		if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 			return err
 		}
-		
+
 		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
 			return err
 		}
-		
+
 		rc, err := f.Open()
 		if err != nil {
 			out.Close()
 			return err
 		}
-		
+
 		_, err = io.Copy(out, rc)
 		out.Close()
 		rc.Close()
@@ -370,7 +370,7 @@ func untar(src, dest string) error {
 		return err
 	}
 	defer f.Close()
-	
+
 	gzr, err := gzip.NewReader(f)
 	if err != nil {
 		return err
@@ -393,7 +393,7 @@ func untar(src, dest string) error {
 		}
 
 		target := filepath.Join(dest, header.Name)
-		
+
 		// Prevent Tar Slip vulnerability
 		targetAbs, err := filepath.Abs(target)
 		if err != nil {

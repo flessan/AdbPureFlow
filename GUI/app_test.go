@@ -50,7 +50,7 @@ func TestFindScrcpyFolder(t *testing.T) {
 		// Windows
 		execName = "scrcpy.exe"
 	}
-	
+
 	simulatedBinary := filepath.Join(scrcpySubDir, execName)
 	if err := os.WriteFile(simulatedBinary, []byte("dummy binary contents"), 0755); err != nil {
 		t.Fatal(err)

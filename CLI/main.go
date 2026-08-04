@@ -96,7 +96,7 @@ func main() {
 	fmt.Println("\n[5] Menunggu sistem... membuka aplikasi otomatis...")
 	fmt.Println("    Waiting for system... launching the application automatically...")
 	time.Sleep(1500 * time.Millisecond) // Wait 1.5 seconds for device to be ready
-	
+
 	launchCmd := exec.Command(adbPath, "shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1")
 	if err := launchCmd.Run(); err != nil {
 		fmt.Printf("[!] Gagal meluncurkan aplikasi otomatis: %v\n[!] Failed to auto-launch application: %v\n", err, err)
@@ -180,7 +180,7 @@ func setupADB() string {
 	if runtime.GOOS == "windows" {
 		adbName = "adb.exe"
 	}
-	
+
 	adbFile := filepath.Join(base, engineDir, "platform-tools", adbName)
 	if _, err := os.Stat(adbFile); err == nil {
 		return adbFile
@@ -219,7 +219,7 @@ func setupADB() string {
 		fmt.Printf("[!] Gagal membuat file zip temp: %v\n", err)
 		return ""
 	}
-	
+
 	_, err = io.Copy(f, resp.Body)
 	f.Close()
 	if err != nil {
@@ -261,7 +261,7 @@ func unzip(src, dest string) error {
 
 	for _, f := range r.File {
 		fpath := filepath.Join(dest, f.Name)
-		
+
 		// Prevent Zip Slip vulnerability
 		fpathAbs, err := filepath.Abs(fpath)
 		if err != nil {
@@ -277,22 +277,22 @@ func unzip(src, dest string) error {
 			}
 			continue
 		}
-		
+
 		if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 			return err
 		}
-		
+
 		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
 			return err
 		}
-		
+
 		rc, err := f.Open()
 		if err != nil {
 			out.Close()
 			return err
 		}
-		
+
 		_, err = io.Copy(out, rc)
 		out.Close()
 		rc.Close()
