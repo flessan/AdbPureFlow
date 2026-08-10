@@ -1,581 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="ADBPureFlow - Lightweight Go utility to automate Android APK lifecycle: setup ADB, install, auto-detect package ID, and perform clean uninstalls.">
-    <title>ADBPureFlow - ADB Installer & Screen Mirror</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ADBPureFlow is an open-source Android device utility for installing APKs, managing packages, selecting connected devices, and launching scrcpy screen mirroring.">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
+    <meta property="og:title" content="ADBPureFlow">
+    <meta property="og:description" content="A practical open-source utility for everyday Android device and APK workflows.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://adbpure.pages.dev/">
+    <title>ADBPureFlow — Practical Android device management</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <script>
+        try {
+            const savedTheme = localStorage.getItem('adbpureflow-theme');
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                document.documentElement.dataset.theme = savedTheme;
+            }
+        } catch (_) { /* The system preference remains the fallback. */ }
+    </script>
     <link rel="stylesheet" href="./gudang/gaya.blu.css">
+    <script src="./site.js" defer></script>
 </head>
-
 <body>
-    <nav>
-        <div class="nav-inner">
-            <a href="#" class="logo">
-                <div class="logo-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 107.27">
-                        <path
-                            d="M22.48 0h77.92c6.15 0 11.75 2.53 15.82 6.6 4.11 4.11 6.67 9.8 6.67 16.06v61.96c0 6.26-2.55 11.94-6.67 16.06-4.07 4.07-9.67 6.6-15.82 6.6H22.48c-6.15 0-11.75-2.53-15.82-6.6C2.55 96.56 0 90.88 0 84.62V22.65C0 16.39 2.55 10.7 6.66 6.59 10.73 2.53 16.33 0 22.48 0zm45.43 60.22H54.67l-1.9 6.24H40.83l14.24-37.84h12.8l14.18 37.84H69.81l-1.9-6.24zm-2.47-8.19l-4.13-13.6-4.15 13.6h8.28zM4.54 76.22c.79 3.18 2.34 6.02 4.44 8.29 3.09 3.33 7.35 5.4 12.05 5.4h80.83c.19 0 .38 0 .57-.01l1.15-.08c4.01-.44 7.62-2.39 10.33-5.31 2.1-2.26 3.65-5.1 4.44-8.28V22.65c0-4.85-2-9.28-5.21-12.49a17.95 17.95 0 00-12.73-5.28H22.48c-4.97 0-9.48 2.02-12.73 5.28-3.22 3.22-5.21 7.64-5.21 12.49v53.57z" />
-                    </svg>
-                </div>
-                ADBPure<span class="logo-domain">.pages.dev</span>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <svg class="svg-sprite" aria-hidden="true">
+        <symbol id="icon-download" viewBox="0 0 24 24">
+            <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14"/>
+        </symbol>
+        <symbol id="icon-github" viewBox="0 0 24 24">
+            <path fill="currentColor" stroke="none" d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18A11 11 0 0 1 12 6.11c.98 0 1.96.13 2.88.39 2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.25c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/>
+        </symbol>
+        <symbol id="icon-sun" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>
+        </symbol>
+        <symbol id="icon-moon" viewBox="0 0 24 24">
+            <path d="M20.1 15.2A8.5 8.5 0 0 1 8.8 3.9a8.5 8.5 0 1 0 11.3 11.3Z"/>
+        </symbol>
+        <symbol id="icon-arrow" viewBox="0 0 24 24">
+            <path d="M5 12h14m-5-5 5 5-5 5"/>
+        </symbol>
+        <symbol id="icon-folder" viewBox="0 0 24 24">
+            <path d="M3 6.5h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11Z"/>
+        </symbol>
+        <symbol id="icon-device" viewBox="0 0 24 24">
+            <rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10 18.5h4"/>
+        </symbol>
+        <symbol id="icon-refresh" viewBox="0 0 24 24">
+            <path d="M20 7v5h-5M4 17v-5h5m10.1 0A7.2 7.2 0 0 0 6.7 7.1L4 12m16 0-2.7 4.9A7.2 7.2 0 0 1 4.9 12"/>
+        </symbol>
+        <symbol id="icon-trash" viewBox="0 0 24 24">
+            <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>
+        </symbol>
+        <symbol id="icon-play" viewBox="0 0 24 24">
+            <path d="m8 5 11 7-11 7V5Z"/>
+        </symbol>
+        <symbol id="icon-chevron" viewBox="0 0 24 24">
+            <path d="m9 6 6 6-6 6"/>
+        </symbol>
+    </svg>
+
+    <header class="site-header">
+        <div class="nav-shell">
+            <a class="brand" href="#top" aria-label="ADBPureFlow home">
+                <span class="brand-mark" aria-hidden="true">A</span>
+                <span>ADBPureFlow</span>
             </a>
+
+            <nav class="site-nav" aria-label="Primary navigation">
+                <a href="#product">Product</a>
+                <a href="#features">Features</a>
+                <a href="#download">Download</a>
+                <a href="#open-source">Open source</a>
+            </nav>
+
             <div class="nav-actions">
-                <span class="nav-stars" id="navStars">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    <span id="navStarCount">-</span>
-                </span>
-                <a href="https://github.com/flessan/AdbPureFlow" class="github-btn" target="_blank" rel="noopener">
-                    <svg viewBox="0 0 24 24">
-                        <path
-                            d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                    </svg>
+                <a class="icon-link github-link" href="https://github.com/flessan/AdbPureFlow" aria-label="View ADBPureFlow on GitHub">
+                    <svg aria-hidden="true"><use href="#icon-github"/></svg>
                     <span>GitHub</span>
                 </a>
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="Use dark theme">
+                    <svg class="sun-icon" aria-hidden="true"><use href="#icon-sun"/></svg>
+                    <svg class="moon-icon" aria-hidden="true"><use href="#icon-moon"/></svg>
+                </button>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <section class="hero">
-        <div class="hero-badge-row">
-            <span class="badge" id="versionBadge">v5.0 · Scrcpy Mirror</span>
-            <span class="platform-badge" id="platformBadge">Detecting...</span>
-        </div>
-
-        <div class="youtube">
-            <iframe width="454" height="294" src="https://www.youtube.com/embed/1I2WDb-t8_M?si=WPA07y8j9vIoUW8g"
-                title="YouTube video player" frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        </div>
-
-        <h1>ADB Management,<br><span class="highlight" id="typewriter">Perfected.</span><span class="cursor-h1"></span>
-        </h1>
-        <p class="hero-desc" id="heroDesc">The ultimate drag-and-drop companion for Android developers. Install, launch,
-            mirror, and manage devices instantly without typing a single command.</p>
-
-        <div class="hero-actions">
-            <a href="#downloads" class="hero-btn primary-btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                </svg>
-                Download for <span id="primaryPlatform">Your Device</span>
-            </a>
-            <a href="#features" class="hero-btn secondary-btn">
-                Explore Features
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-            </a>
-        </div>
-
-        <div class="terminal-container">
-            <button class="copy-btn" onclick="copyCommands()" aria-label="Copy terminal output">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                </svg>
-                <span>Copy</span>
-            </button>
-            <div class="terminal">
-                <div class="terminal-header">
-                    <span class="dot dot-red"></span>
-                    <span class="dot dot-yellow"></span>
-                    <span class="dot dot-green"></span>
-                    <span class="terminal-title">ADBPureFlow - Example Log</span>
-                </div>
-                <div class="terminal-body" id="terminal"></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="features" id="features">
-        <div class="features-inner">
-            <h2>Features You'll Love</h2>
-            <p class="section-subtitle">Everything you need in a lightweight, portable package.</p>
-            <div class="features-grid">
-                <div class="card">
-                    <div class="card-icon"><svg viewBox="0 0 24 24">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg></div>
-                    <h3>Screen Mirror</h3>
-                    <p>One-click mirroring powered by GoScRcPy. No setup required - click and view your device screen
-                        instantly.</p>
-                </div>
-                <div class="card">
-                    <div class="card-icon"><svg viewBox="0 0 24 24">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                        </svg></div>
-                    <h3>Drag & Drop Install</h3>
-                    <p>Say goodbye to terminal commands. Drag an APK onto the window to install and launch it
-                        automatically.</p>
-                </div>
-                <div class="card">
-                    <div class="card-icon"><svg viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="3" />
-                            <path
-                                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-                        </svg></div>
-                    <h3>Smart Manager</h3>
-                    <p>Detects connected devices automatically. Uninstall packages with a right-click or simple input.
-                    </p>
-                </div>
-                <div class="card">
-                    <div class="card-icon"><svg viewBox="0 0 24 24">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                        </svg></div>
-                    <h3>Portable Engine</h3>
-                    <p>Auto-downloads Scrcpy and ADB binaries if missing. Runs on Windows, Linux, and macOS.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="steps">
-        <div class="steps-inner">
-            <div class="step">
-                <div class="step-number">1</div>
-                <h3>Connect</h3>
-                <p>Plug in your device via USB or connect over WiFi.</p>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <h3>Select</h3>
-                <p>Choose your target device from the dropdown list.</p>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <h3>Action</h3>
-                <p>Drag an APK to install, or hit the Mirror button!</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- ✨ NEW: All Downloads Section -->
-    <section class="downloads" id="downloads">
-        <div class="downloads-inner">
-            <h2>All Releases & Downloads</h2>
-            <p class="section-subtitle">Every version, every platform. Your downloads are auto-detected below.</p>
-            <div id="releases-container" class="releases-container">
-                <div class="loading-state">
-                    <div class="loader"></div>
-                    <p>Loading releases from GitHub...</p>
-                </div>
-            </div>
-            <div class="downloads-footer">
-                <a href="https://github.com/flessan/AdbPureFlow/releases" target="_blank" rel="noopener"
-                    class="link-btn">
-                    View all releases on GitHub →
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ✨ NEW: Contribute Section -->
-    <section class="contribute" id="contribute">
-        <div class="contribute-inner">
-            <div class="contribute-header">
-                <h2>Help Make It Better</h2>
-                <p class="section-subtitle">Open source means we build it together. Every contribution counts.</p>
-            </div>
-
-            <div class="contribute-grid">
-                <a href="https://github.com/flessan/AdbPureFlow" target="_blank" rel="noopener"
-                    class="contribute-card star-card">
-                    <div class="contribute-icon-wrap star-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
+    <main id="main-content">
+        <section class="hero" id="top" aria-labelledby="hero-title">
+            <div class="content-shell">
+                <div class="hero-copy">
+                    <p class="eyebrow">Open-source Android utility</p>
+                    <h1 id="hero-title">ADBPureFlow</h1>
+                    <p class="hero-description">Install and launch APKs, target connected devices, remove packages, and start scrcpy mirroring from one focused desktop tool.</p>
+                    <div class="hero-actions">
+                        <a class="button button-primary" id="heroDownload" href="#download">
+                            <svg aria-hidden="true"><use href="#icon-download"/></svg>
+                            <span id="heroDownloadLabel">Download ADBPureFlow</span>
+                        </a>
+                        <a class="button button-secondary" href="https://github.com/flessan/AdbPureFlow">
+                            <svg aria-hidden="true"><use href="#icon-github"/></svg>
+                            View on GitHub
+                        </a>
                     </div>
-                    <h3>Give a Star</h3>
-                    <p class="contribute-count"><span id="starCount">-</span> people starred</p>
-                    <p class="contribute-desc">Show your support and help others discover ADBPureFlow.</p>
-                    <span class="contribute-cta">Star it now →</span>
-                </a>
+                    <ul class="hero-meta">
+                        <li>GUI + CLI</li>
+                        <li>Windows, Linux &amp; macOS</li>
+                        <li>GPL-3.0</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-                <a href="https://github.com/flessan/AdbPureFlow/fork" target="_blank" rel="noopener"
-                    class="contribute-card fork-card">
-                    <div class="contribute-icon-wrap fork-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="18" r="3" />
-                            <circle cx="6" cy="6" r="3" />
-                            <circle cx="18" cy="6" r="3" />
-                            <path d="M18 9v1a2 2 0 01-2 2H8a2 2 0 01-2-2V9M12 12v3" />
-                        </svg>
+        <section class="product-section" id="product" aria-labelledby="product-title">
+            <div class="content-shell">
+                <div class="section-heading section-heading-split">
+                    <div>
+                        <p class="eyebrow">The current desktop app</p>
+                        <h2 id="product-title">The device workflow, in one window.</h2>
                     </div>
-                    <h3>Fork & Tinker</h3>
-                    <p class="contribute-count"><span id="forkCount">-</span> forks</p>
-                    <p class="contribute-desc">Make it your own. Submit PRs for new features or bug fixes.</p>
-                    <span class="contribute-cta">Fork it →</span>
-                </a>
+                    <p>Choose a target, run the action you need, and keep the operation log in view. The interface stays out of the way.</p>
+                </div>
 
-                <a href="https://github.com/flessan/AdbPureFlow/issues/new" target="_blank" rel="noopener"
-                    class="contribute-card issue-card">
-                    <div class="contribute-icon-wrap issue-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                        </svg>
-                    </div>
-                    <h3>Open an Issue</h3>
-                    <p class="contribute-count"><span id="issueCount">-</span> open</p>
-                    <p class="contribute-desc">Found a bug? Have an idea? We'd love to hear from you.</p>
-                    <span class="contribute-cta">Report it →</span>
-                </a>
-
-                <a href="https://github.com/flessan/AdbPureFlow/pulls" target="_blank" rel="noopener"
-                    class="contribute-card pr-card">
-                    <div class="contribute-icon-wrap pr-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="18" cy="18" r="3" />
-                            <circle cx="6" cy="6" r="3" />
-                            <path d="M13 6h3a2 2 0 012 2v7M6 9v12" />
-                        </svg>
-                    </div>
-                    <h3>Send a PR</h3>
-                    <p class="contribute-desc">Got a patch ready? We welcome pull requests of all sizes.</p>
-                    <span class="contribute-cta">Open PR →</span>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <section class="tech-stack">
-        <h3>Built with Modern Tech</h3>
-        <div class="tech-icons">
-            <div class="tech-item">
-                <svg viewBox="0 0 24 24" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round"
-                    stroke-miterlimit="1.414">
-                    <path
-                        d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.128-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.129-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082zm12.129-2.36c-.736.187-1.239.327-1.963.514-.176.046-.187.058-.341-.117-.174-.199-.303-.327-.548-.444-.737-.362-1.45-.257-2.115.117-.789.444-1.193 1.11-1.193 2.001 0 .865.585 1.544 1.403 1.638.702.082 1.292-.176 1.76-.714.093-.117.163-.245.245-.373H10.72c-.245 0-.304-.152-.222-.35.152-.362.432-.976.596-1.279.035-.07.117-.187.269-.187h3.875c-.023.257-.023.514-.07.77-.117.77-.408 1.497-.865 2.139-.725.998-1.662 1.662-2.875 1.916-1.004.21-1.963.117-2.84-.385-.795-.455-1.304-1.11-1.544-1.986-.245-.918-.198-1.808.222-2.652.514-1.04 1.304-1.772 2.344-2.239.97-.432 1.965-.514 2.993-.235.886.245 1.597.737 2.126 1.473.09.132.046.21-.117.257z"
-                        fill-rule="nonzero" />
-                </svg>
-                <span>Go (Golang)</span>
-            </div>
-            <div class="tech-item">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                </svg>
-                <span>Open Source</span>
-            </div>
-            <div class="tech-item">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M17.6 11.4c-.1-.1-.2-.2-.3-.2l-5.2-3c-.1-.1-.2-.1-.3-.1s-.2 0-.3.1l-5.2 3c-.1.1-.2.1-.3.2-.1.1-.1.2-.1.4v6c0 .1.1.3.1.4.1.1.2.2.3.2l5.2 3c.1.1.2.1.3.1s.2 0 .3-.1l5.2-3c.1-.1.2-.1.3-.2.1-.1.1-.2.1-.4v-6c0-.2 0-.3-.1-.4zM12 4.2L15.8 6.5 12 8.8 8.2 6.5 12 4.2zM7 13.6V8.9l4 2.3v4.7l-4-2.3zm5 2.3v-4.7l4-2.3v4.7l-4 2.3z" />
-                </svg>
-                <span>Scrcpy Inside</span>
-            </div>
-            <div class="tech-item">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6zm0 4h8v2H6zm10 0h2v2h-2zm-6-4h8v2h-8z" />
-                </svg>
-                <span>Fyne GUI</span>
-            </div>
-        </div>
-    </section>
-
-    <footer>
-        <p>Built with care by <a href="https://github.com/flessan" target="_blank" rel="noopener">Flessan</a>. Open
-            sourced under GPL v3 License.</p>
-    </footer>
-
-    <script>
-        /* =========================================================
-           CONFIG
-           ========================================================= */
-        const REPO_OWNER = 'flessan';
-        const REPO_NAME = 'AdbPureFlow';
-        const REPO_API = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
-        const REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
-        const CACHE_KEY = `github_cache_${REPO_OWNER}_${REPO_NAME}`;
-        const CACHE_TTL = 30 * 60 * 1000; // 30 min
-
-        /* =========================================================
-           PLATFORM DETECTION
-           ========================================================= */
-        function detectPlatform() {
-            const ua = navigator.userAgent.toLowerCase();
-            if (ua.includes('win')) return 'windows';
-            if (ua.includes('mac')) return 'macos';
-            if (ua.includes('linux')) return 'linux';
-            return 'unknown';
-        }
-        const platformMeta = {
-            windows: { icon: '🪟', label: 'Windows', color: '#0078d4' },
-            macos: { icon: '🍎', label: 'macOS', color: '#555' },
-            linux: { icon: '🐧', label: 'Linux', color: '#e6522c' },
-            unknown: { icon: '💻', label: 'All', color: '#64748b' }
-        };
-
-        function assetMatchesPlatform(name, platform) {
-            const n = name.toLowerCase();
-            if (platform === 'windows') return n.includes('win') || n.endsWith('.exe') || n.endsWith('.msi');
-            if (platform === 'macos') return n.includes('mac') || n.includes('darwin') || n.endsWith('.dmg') || n.endsWith('.app') || n.endsWith('.pkg');
-            if (platform === 'linux') return n.includes('linux') || n.endsWith('.tar.gz') || n.endsWith('.appimage') || n.endsWith('.deb') || n.endsWith('.rpm');
-            return false;
-        }
-
-        /* =========================================================
-           TERMINAL ANIMATION
-           ========================================================= */
-        const lines = [
-            { text: '<span class="info">[12:01:00]</span> Status: Ready' },
-            { text: '<span class="info">[12:01:02]</span> Scanning for devices...' },
-            { text: '<span class="success">[12:01:03]</span> Found 2 device(s).' },
-            { text: '<span class="warning">[12:01:05]</span> Target -> Pixel 7 Pro (ANDROID12345)' },
-            { text: '<span class="info">[12:01:10]</span> Processing: GDIPS_Reborn.apk' },
-            { text: '<span class="warning">[12:01:11]</span> Installing to Pixel 7 Pro...' },
-            { text: '<span class="success">[12:01:15]</span> Success! Installed & Launched: com.flessan.gdips' },
-            { text: '<span class="info">[12:01:20]</span> Preparing Scrcpy Engine...' },
-            { text: '<span class="success">[12:01:25]</span> Mirror Active. Window launched.<span class="cursor"></span>' }
-        ];
-        const terminal = document.getElementById('terminal');
-        let i = 0;
-        function addLine() {
-            if (i >= lines.length) return;
-            const div = document.createElement('div');
-            div.className = 'line';
-            div.innerHTML = lines[i].text;
-            div.style.animationDelay = (i * 0.2) + 's';
-            terminal.appendChild(div);
-            i++;
-            setTimeout(addLine, 600);
-        }
-        setTimeout(addLine, 500);
-
-        /* =========================================================
-           TYPEWRITER
-           ========================================================= */
-        const phrases = ["Perfected.", "Without the Headache.", "Made Simple.", "Drag & Drop."];
-        let phraseIndex = 0, letterIndex = phrases[0].length, isDeleting = false;
-        const typewriterElement = document.getElementById('typewriter');
-        function type() {
-            const currentPhrase = phrases[phraseIndex];
-            isDeleting ? letterIndex-- : letterIndex++;
-            typewriterElement.textContent = currentPhrase.substring(0, letterIndex);
-            let typeSpeed = 80;
-            if (isDeleting) typeSpeed /= 2;
-            if (!isDeleting && letterIndex === currentPhrase.length) {
-                typeSpeed = 2000; isDeleting = true;
-            } else if (isDeleting && letterIndex === 0) {
-                isDeleting = false;
-                phraseIndex = (phraseIndex + 1) % phrases.length;
-                typeSpeed = 400;
-            }
-            setTimeout(type, typeSpeed);
-        }
-        setTimeout(() => { isDeleting = true; type(); }, 2000);
-
-        /* =========================================================
-           COPY COMMANDS
-           ========================================================= */
-        function copyCommands() {
-            const commands = Array.from(terminal.children).map(l => l.textContent).join('\n');
-            navigator.clipboard.writeText(commands).then(() => {
-                const btn = document.querySelector('.copy-btn span');
-                const orig = btn.textContent;
-                btn.textContent = '✓ Copied!';
-                setTimeout(() => btn.textContent = orig, 2000);
-            });
-        }
-
-        /* =========================================================
-           GITHUB API WITH CACHE
-           ========================================================= */
-        async function fetchGitHubData() {
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                try {
-                    const data = JSON.parse(cached);
-                    if (Date.now() - data.timestamp < CACHE_TTL) return data;
-                } catch (e) { /* corrupted cache - fetch fresh */ }
-            }
-            try {
-                const repoRes = await fetch(REPO_API);
-                if (!repoRes.ok) throw new Error('Repo fetch failed: ' + repoRes.status);
-                const repo = await repoRes.json();
-
-                let releases = [];
-                try {
-                    const relRes = await fetch(`${REPO_API}/releases`);
-                    if (relRes.ok) releases = await relRes.json();
-                } catch (e) { /* no releases yet */ }
-
-                const data = { repo, releases, timestamp: Date.now() };
-                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-                return data;
-            } catch (err) {
-                console.error('GitHub API error:', err);
-                if (cached) { try { return JSON.parse(cached); } catch (e) { } }
-                return null;
-            }
-        }
-
-        /* =========================================================
-           RENDER: RELEASES
-           ========================================================= */
-        function formatBytes(bytes) {
-            if (!bytes) return '-';
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-        }
-
-        function renderPlatformButtons(assets, userPlatform) {
-            const platforms = ['windows', 'macos', 'linux'];
-            return platforms.map(p => {
-                const matches = assets.filter(a => assetMatchesPlatform(a.name, p));
-                if (matches.length === 0) {
-                    return `
-                    <div class="platform-col">
-                        <div class="platform-head">
-                            <span class="platform-icon">${platformMeta[p].icon}</span>
-                            <span>${platformMeta[p].label}</span>
+                <figure class="product-figure">
+                    <div class="product-stage">
+                        <div class="app-window" aria-hidden="true">
+                            <div class="window-titlebar">
+                                <div class="window-controls"><span></span><span></span><span></span></div>
+                                <span class="window-title">ADBPureFlow Pro v5.0 (Mirror Edition)</span>
+                                <span class="window-spacer"></span>
+                            </div>
+                            <div class="app-content">
+                                <div class="app-heading">
+                                    <strong>ADBPureFlow Pro</strong>
+                                    <span>Universal ADB Installer, Manager &amp; Mirror</span>
+                                </div>
+                                <div class="app-divider"></div>
+                                <div class="device-row">
+                                    <span>Target Device:</span>
+                                    <div class="device-select">
+                                        <span>Pixel 7 (R3CN30A1X)</span>
+                                        <span class="select-arrow">⌄</span>
+                                    </div>
+                                </div>
+                                <div class="app-toolbar">
+                                    <span class="mock-tool"><svg><use href="#icon-folder"/></svg><span>Open APK</span></span>
+                                    <i></i>
+                                    <span class="mock-tool"><svg><use href="#icon-device"/></svg><span>Devices</span></span>
+                                    <span class="mock-tool"><svg><use href="#icon-trash"/></svg><span>Uninstall</span></span>
+                                    <i></i>
+                                    <span class="mock-tool mock-tool-active"><svg><use href="#icon-play"/></svg><span>Mirror</span></span>
+                                    <b></b>
+                                    <span class="mock-tool"><svg><use href="#icon-refresh"/></svg><span>Clear</span></span>
+                                </div>
+                                <div class="app-divider"></div>
+                                <div class="log-panel">
+                                    <div class="log-label">System Logs</div>
+                                    <p><time>10:42:07</time> Scanning for devices...</p>
+                                    <p><time>10:42:08</time> Found 1 device(s).</p>
+                                    <p><time>10:42:08</time> Target -&gt; Pixel 7 (R3CN30A1X)</p>
+                                    <p><time>10:42:16</time> Processing: sample-debug.apk</p>
+                                    <p class="log-success"><time>10:42:20</time> Success! Installed &amp; Launched: dev.sample.app</p>
+                                    <p><time>10:42:24</time> Preparing Scrcpy Engine...</p>
+                                    <p class="log-success"><time>10:42:25</time> Scrcpy launched successfully.</p>
+                                </div>
+                                <div class="app-footer">
+                                    <span><span class="status-dot"></span>Status: Mirroring Active</span>
+                                    <span>Ready</span>
+                                </div>
+                            </div>
                         </div>
-                        <span class="no-asset">Not available</span>
-                    </div>`;
-                }
-                const buttons = matches.map(a => `
-                <a href="${a.browser_download_url}" class="download-btn ${p === userPlatform ? 'recommended' : ''}" target="_blank" rel="noopener" download>
-                    <span class="btn-name">${a.name.replace(/\.(exe|dmg|deb|tar\.gz|appimage|msi|pkg)$/i, '')}</span>
-                    <span class="btn-size">${formatBytes(a.size)}</span>
-                    ${p === userPlatform ? '<span class="recommended-tag">Recommended</span>' : ''}
-                </a>
-            `).join('');
-                return `
-                <div class="platform-col">
-                    <div class="platform-head">
-                        <span class="platform-icon">${platformMeta[p].icon}</span>
-                        <span>${platformMeta[p].label}</span>
                     </div>
-                    ${buttons}
-                </div>`;
-            }).join('');
-        }
+                    <figcaption>Faithful browser mockup based on the current Fyne GUI and its implemented actions.</figcaption>
+                </figure>
 
-        function renderReleases(releases, userPlatform) {
-            const container = document.getElementById('releases-container');
-            if (!releases || releases.length === 0) {
-                container.innerHTML = `
-                <div class="no-releases">
-                    <div class="no-releases-icon">📦</div>
-                    <h3>No official releases yet</h3>
-                    <p>The project is actively being built. Grab the source from GitHub and compile it yourself!</p>
-                    <a href="${REPO_URL}" target="_blank" rel="noopener" class="hero-btn primary-btn" style="margin-top:1rem;">
-                        View Source on GitHub →
+                <ul class="showcase-notes">
+                    <li><span>01</span>Select any device already visible to ADB.</li>
+                    <li><span>02</span>Install, uninstall, refresh, or start a mirror.</li>
+                    <li><span>03</span>Follow each operation in the visible activity log.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="features-section" id="features" aria-labelledby="features-title">
+            <div class="content-shell">
+                <div class="section-heading reading-width">
+                    <p class="eyebrow">What it does</p>
+                    <h2 id="features-title">A practical layer over everyday ADB work.</h2>
+                    <p>No dashboards or simulated workflows—just the capabilities implemented in the GUI and CLI today.</p>
+                </div>
+
+                <div class="feature-list">
+                    <article class="feature-row">
+                        <span class="feature-index">01</span>
+                        <h3>Connected device management</h3>
+                        <p>Scans <code>adb devices -l</code>, shows the model and serial, and lets you direct each GUI action to a specific device.</p>
+                    </article>
+                    <article class="feature-row">
+                        <span class="feature-index">02</span>
+                        <h3>APK installation and launch</h3>
+                        <p>Open or drop an APK to install it with ADB. ADBPureFlow compares package snapshots, identifies a newly added package, and launches it automatically.</p>
+                    </article>
+                    <article class="feature-row">
+                        <span class="feature-index">03</span>
+                        <h3>Screen mirroring</h3>
+                        <p>Starts scrcpy for the selected device in its own always-on-top window. If the local engine is missing, the app can download the supported build.</p>
+                    </article>
+                    <article class="feature-row">
+                        <span class="feature-index">04</span>
+                        <h3>Package management</h3>
+                        <p>Remove an application by package ID from the selected device and see the result directly in the operation log.</p>
+                    </article>
+                    <article class="feature-row">
+                        <span class="feature-index">05</span>
+                        <h3>Automatic tool setup</h3>
+                        <p>Uses an existing ADB installation when available or provisions Android platform tools locally, with guarded ZIP and TAR extraction.</p>
+                    </article>
+                    <article class="feature-row">
+                        <span class="feature-index">06</span>
+                        <h3>Cross-platform GUI and CLI</h3>
+                        <p>Use the desktop interface or the direct console workflow on Windows, Linux, and macOS. Release builds are published for 64-bit systems.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="download-section" id="download" aria-labelledby="download-title">
+            <div class="content-shell">
+                <div class="section-heading section-heading-split download-heading">
+                    <div>
+                        <p class="eyebrow">Download</p>
+                        <h2 id="download-title">Choose your platform.</h2>
+                    </div>
+                    <div class="release-summary" aria-live="polite">
+                        <strong id="releaseVersion">v5.0.0</strong>
+                        <span id="releaseDate">Released August 5, 2026</span>
+                        <span id="releaseStatus">Checking the latest GitHub release…</span>
+                    </div>
+                </div>
+
+                <div class="download-list">
+                    <article class="download-row" data-platform="windows">
+                        <div class="platform-name">
+                            <span class="platform-monogram" aria-hidden="true">W</span>
+                            <div><h3>Windows</h3><p>64-bit</p></div>
+                            <span class="detected-label">Detected</span>
+                        </div>
+                        <div class="platform-downloads">
+                            <a class="download-link download-link-primary" data-download="windows-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>GUI</span><small data-file-meta>View release</small>
+                            </a>
+                            <a class="download-link" data-download="windows-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>CLI</span><small data-file-meta>View release</small>
+                            </a>
+                        </div>
+                    </article>
+                    <article class="download-row" data-platform="linux">
+                        <div class="platform-name">
+                            <span class="platform-monogram" aria-hidden="true">L</span>
+                            <div><h3>Linux</h3><p>64-bit</p></div>
+                            <span class="detected-label">Detected</span>
+                        </div>
+                        <div class="platform-downloads">
+                            <a class="download-link download-link-primary" data-download="linux-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>GUI</span><small data-file-meta>View release</small>
+                            </a>
+                            <a class="download-link" data-download="linux-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>CLI</span><small data-file-meta>View release</small>
+                            </a>
+                        </div>
+                    </article>
+                    <article class="download-row" data-platform="macos">
+                        <div class="platform-name">
+                            <span class="platform-monogram" aria-hidden="true">M</span>
+                            <div><h3>macOS</h3><p>Intel 64-bit</p></div>
+                            <span class="detected-label">Detected</span>
+                        </div>
+                        <div class="platform-downloads">
+                            <a class="download-link download-link-primary" data-download="macos-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>GUI</span><small data-file-meta>View release</small>
+                            </a>
+                            <a class="download-link" data-download="macos-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                                <span>CLI</span><small data-file-meta>View release</small>
+                            </a>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="download-footnote">
+                    <p>On Linux and macOS, make the downloaded file executable with <code>chmod +x adbpureflow-*</code>.</p>
+                    <a id="releaseLink" href="https://github.com/flessan/AdbPureFlow/releases/latest">Release notes <svg aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+                </div>
+            </div>
+        </section>
+
+        <section class="open-source-section" id="open-source" aria-labelledby="open-source-title">
+            <div class="content-shell open-source-layout">
+                <div class="section-heading">
+                    <p class="eyebrow">Open source</p>
+                    <h2 id="open-source-title">Built in public, useful by design.</h2>
+                    <p>ADBPureFlow is written in Go, uses Fyne for its desktop interface, and is released under the GNU GPL v3. Read the source, report a problem, or contribute a focused improvement.</p>
+                    <p class="stack-line">Go <span>·</span> Fyne <span>·</span> Android platform tools <span>·</span> scrcpy</p>
+                </div>
+
+                <nav class="project-links" aria-label="Open-source project links">
+                    <a href="https://github.com/flessan/AdbPureFlow">
+                        <span><strong>Repository</strong><small>Source and documentation</small></span>
+                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
                     </a>
-                </div>`;
-                return;
-            }
+                    <a href="https://github.com/flessan/AdbPureFlow/releases">
+                        <span><strong>Releases</strong><small>Published builds and notes</small></span>
+                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                    </a>
+                    <a href="https://github.com/flessan/AdbPureFlow/issues">
+                        <span><strong>Issues</strong><small>Bugs and feature requests</small></span>
+                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                    </a>
+                    <a href="https://github.com/flessan/AdbPureFlow/graphs/contributors">
+                        <span><strong>Contributors</strong><small>People behind the project</small></span>
+                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                    </a>
+                </nav>
+            </div>
+        </section>
+    </main>
 
-            container.innerHTML = releases.map((release, idx) => {
-                const isLatest = idx === 0;
-                const date = new Date(release.published_at).toLocaleDateString(undefined, {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                });
-                const totalDownloads = release.assets.reduce((sum, a) => sum + (a.download_count || 0), 0);
-                const body = release.body || '';
-                const escapedBody = body.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-                return `
-                <article class="release-card ${isLatest ? 'latest' : ''}">
-                    <header class="release-head">
-                        <div class="release-title-row">
-                            <h3 class="release-tag">${release.tag_name}</h3>
-                            ${isLatest ? '<span class="latest-badge">Latest</span>' : ''}
-                            ${release.prerelease ? '<span class="prerelease-badge">Pre-release</span>' : ''}
-                            ${release.draft ? '<span class="draft-badge">Draft</span>' : ''}
-                        </div>
-                        <div class="release-meta">
-                            <span class="release-date">📅 ${date}</span>
-                            ${totalDownloads > 0 ? `<span class="release-downloads-count">⬇ ${totalDownloads.toLocaleString()} downloads</span>` : ''}
-                        </div>
-                    </header>
-                    <div class="release-platforms">
-                        ${renderPlatformButtons(release.assets || [], userPlatform)}
-                    </div>
-                    ${escapedBody ? `
-                        <details class="release-notes">
-                            <summary>Release notes</summary>
-                            <div class="release-notes-body">${escapedBody}</div>
-                        </details>
-                    ` : ''}
-                </article>
-            `;
-            }).join('');
-        }
-
-        /* =========================================================
-           RENDER: CONTRIBUTE STATS
-           ========================================================= */
-        function renderContributeStats(repo) {
-            document.getElementById('starCount').textContent = repo.stargazers_count.toLocaleString();
-            document.getElementById('forkCount').textContent = repo.forks_count.toLocaleString();
-            document.getElementById('issueCount').textContent = repo.open_issues_count.toLocaleString();
-            document.getElementById('navStarCount').textContent = repo.stargazers_count;
-        }
-
-        /* =========================================================
-           MAIN
-           ========================================================= */
-        async function updateUI() {
-            const platform = detectPlatform();
-            const meta = platformMeta[platform];
-
-            // Platform badge
-            document.getElementById('platformBadge').innerHTML = `${meta.icon} Detected: ${meta.label}`;
-            document.getElementById('primaryPlatform').textContent = meta.label;
-
-            // Set hero button to #downloads section for platform-specific pick
-            document.querySelector('.primary-btn').href = '#downloads';
-
-            // Fetch
-            const data = await fetchGitHubData();
-            if (!data) {
-                document.getElementById('releases-container').innerHTML = `
-                <div class="no-releases">
-                    <p>Couldn't reach GitHub. Check your connection.</p>
-                    <a href="${REPO_URL}" target="_blank" rel="noopener">Visit repo directly →</a>
-                </div>`;
-                return;
-            }
-
-            const { repo, releases } = data;
-
-            // Version badge update
-            if (releases.length > 0) {
-                document.getElementById('versionBadge').textContent = `${releases[0].tag_name} · Scrcpy Mirror`;
-            }
-
-            // Description
-            if (repo.description) {
-                document.getElementById('heroDesc').textContent = repo.description;
-            }
-
-            // Render
-            renderReleases(releases, platform);
-            renderContributeStats(repo);
-        }
-
-        document.addEventListener('DOMContentLoaded', updateUI);
-    </script>
+    <footer class="site-footer">
+        <div class="content-shell footer-layout">
+            <p><strong>ADBPureFlow</strong> — simple tool, serious utility.</p>
+            <p>Maintained by <a href="https://github.com/flessan">Flessan</a> · <a href="https://github.com/flessan/AdbPureFlow/blob/main/LICENSE">GPL-3.0</a> · <span id="currentYear">2026</span></p>
+        </div>
+    </footer>
 </body>
-
 </html>
