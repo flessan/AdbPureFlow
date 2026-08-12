@@ -25,11 +25,21 @@ Feature requests are always welcome! Open an issue with:
 
 ### 3. Submitting Pull Requests
 - Fork the repository.
-- Create a new branch from `main` (e.g., `feature/awesome-new-tool` or `fix/connection-bug`).
+- Create a new branch from `main` (development branches for Arena sessions use the `arena/*` namespace; personal branches can use any descriptive name, e.g. `feature/awesome-new-tool` or `fix/connection-bug`).
 - Write meaningful, descriptive commit messages.
-- Ensure all tests pass.
+- Ensure all tests pass locally.
 - Write tests for any new logic introduced.
-- Submit a pull request describing the changes and why they are valuable.
+- Fill in the pull request template sections (`## Summary`, `## Validation`,
+  `## Breaking Changes`, `## Notes`) — the content you write here is used to
+  build the changelog and release notes automatically when your PR is merged.
+- Select the semantic versioning impact of your change (MAJOR/MINOR/PATCH)
+  using the checkbox in the PR template, or apply one of the labels
+  `breaking`, `feature`, `bug`, `chore`, `ci`, `docs` to the PR. If nothing
+  is selected, the release defaults to a PATCH bump. You may also add a
+  `Release-As: vX.Y.Z` line in the PR body to force a specific version.
+- Submit the pull request. CI (lint, vet, tests, multi-platform build) will
+  run automatically. Releases are produced **only** when a PR is merged into
+  `main`; branch builds never create tags or publish artifacts.
 
 ---
 
