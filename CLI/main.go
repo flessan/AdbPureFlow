@@ -1,309 +1,749 @@
+// Command adbpureflow-cli is the interactive command-line interface for
+// ADBPureFlow. It is a thin presentation layer over the shared `internal/adb`
+// core, which also powers the Fyne GUI.
+//
+// Launch with no arguments to enter the interactive REPL. Pass a subcommand
+// to run a single operation scriptably:
+//
+//	adbpureflow-cli devices
+//	adbpureflow-cli apps [-u] [serial]
+//	adbpureflow-cli info <package> [serial]
+//	adbpureflow-cli install <path-to.apk> [serial]
+//	adbpureflow-cli launch  <package>  [serial]
+//	adbpureflow-cli stop    <package>  [serial]
+//	adbpureflow-cli uninstall <package> [serial]
+//	adbpureflow-cli mirror  [serial]
 package main
 
 import (
-	"archive/zip"
 	"bufio"
+	"context"
+	"flag"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"os/exec"
+	"os/signal"
 	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
-	"time"
+
+	"github.com/flessan/AdbPureFlow/internal/adb"
 )
 
-var adbURLs = map[string]string{
-	"windows": "https://dl.google.com/android/repository/platform-tools-latest-windows.zip",
-	"darwin":  "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip",
-	"linux":   "https://dl.google.com/android/repository/platform-tools-latest-linux.zip",
-}
-
-const engineDir = "adb_engine"
+var version = "dev"
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("=================================================================")
-	fmt.Println("               ADBPureFlow CLI Pro v5.0                          ")
-	fmt.Println("         Automated Android APK Lifecycle Companion               ")
-	fmt.Println("=================================================================")
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
-	// 1. Setup ADB
-	adbPath := setupADB()
-	if adbPath == "" {
-		fmt.Println("\n[!] Gagal menyiapkan ADB. Cek koneksi internet.")
-		fmt.Println("[!] Failed to set up ADB. Check your internet connection or path.")
-		tungguEnter(reader)
-		return
+	flag.Usage = usage
+	if len(os.Args) > 1 {
+		os.Exit(runCLI(ctx, os.Args[1:]))
+	}
+	runREPL(ctx)
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "ADBPureFlow CLI %s\n\n", version)
+	fmt.Fprintf(os.Stderr, "Usage:\n")
+	fmt.Fprintf(os.Stderr, "  %s                  interactive REPL\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s devices\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s apps [-u] [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s info <package> [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s install <path-to.apk> [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s launch <package> [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s stop <package> [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s uninstall <package> [serial]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s mirror [serial]\n", os.Args[0])
+}
+
+// ---------------------------------------------------------------------------
+// Interactive REPL
+// ---------------------------------------------------------------------------
+
+func runREPL(ctx context.Context) {
+	m := mustInitManager()
+	r := bufio.NewReader(os.Stdin)
+
+	printBanner()
+	fmt.Println("  Type `help` for a list of commands, `exit` to quit.\n")
+
+	var selected *adb.Device
+	var lastPackages []adb.Package
+	prompt := func() string {
+		if selected == nil {
+			return "adbpureflow> "
+		}
+		return fmt.Sprintf("adbpureflow@%s> ", shortSerial(selected.Serial))
 	}
 
-	fmt.Printf("\n[*] ADB Engine active: %s\n", adbPath)
-
-	// 2. Input APK
-	fmt.Print("\n[1] Tarik file APK ke sini & Tekan Enter:\n    Drag the APK file here & Press Enter: ")
-	apkPathRaw, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Printf("[!] Error reading input: %v\n", err)
-		return
-	}
-	apkPath := strings.TrimSpace(strings.Trim(apkPathRaw, "\"\r\n'"))
-	if apkPath == "" {
-		fmt.Println("[!] Path kosong. Membalkan operasi.\n[!] Empty path. Cancelling operation.")
-		tungguEnter(reader)
-		return
-	}
-
-	// Verify APK file exists
-	if _, err := os.Stat(apkPath); os.IsNotExist(err) {
-		fmt.Printf("[!] File APK tidak ditemukan di path: %s\n[!] APK file not found at: %s\n", apkPath, apkPath)
-		tungguEnter(reader)
-		return
-	}
-
-	// 3. Scan Sebelum Install
-	fmt.Println("\n[2] Memindai daftar aplikasi di HP...\n    Scanning list of applications on your device...")
-	beforeList := getPackageList(adbPath)
-
-	// 4. Install
-	fmt.Println("\n[3] Memasang aplikasi ke HP...\n    Installing the application to your device...")
-	installCmd := exec.Command(adbPath, "install", "-r", "-d", apkPath)
-	installCmd.Stdout = os.Stdout
-	installCmd.Stderr = os.Stderr
-	if err := installCmd.Run(); err != nil {
-		fmt.Printf("[!] Error saat instalasi: %v\n[!] Installation error: %v\n", err, err)
-	}
-
-	// 5. Scan Sesudah & Identifikasi
-	fmt.Println("\n[4] Mencari ID aplikasi baru...\n    Searching for new application ID...")
-	afterList := getPackageList(adbPath)
-	packageName := findNewPackage(beforeList, afterList)
-
-	if packageName == "" {
-		fmt.Println("\n[!] Tidak ada ID baru terdeteksi. Aplikasi mungkin sudah ada atau gagal terpasang.")
-		fmt.Println("[!] No new ID found. The application may already exist or failed to install.")
-		fmt.Print("Ketik ID manual (contoh: com.example.app) atau Tekan Enter untuk batal: \nType the manual ID (example: com.example.app) or press Enter to cancel: ")
-		manual, _ := reader.ReadString('\n')
-		packageName = strings.TrimSpace(manual)
-		if packageName == "" {
+	for {
+		fmt.Print(prompt())
+		line, err := r.ReadString('\n')
+		if err != nil {
+			fmt.Println()
 			return
 		}
-	}
-
-	fmt.Printf("\nSUCCESS! Terdeteksi / Detected: %s\n", packageName)
-
-	// 6. Auto-Launch
-	fmt.Println("\n[5] Menunggu sistem... membuka aplikasi otomatis...")
-	fmt.Println("    Waiting for system... launching the application automatically...")
-	time.Sleep(1500 * time.Millisecond) // Wait 1.5 seconds for device to be ready
-
-	launchCmd := exec.Command(adbPath, "shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1")
-	if err := launchCmd.Run(); err != nil {
-		fmt.Printf("[!] Gagal meluncurkan aplikasi otomatis: %v\n[!] Failed to auto-launch application: %v\n", err, err)
-	}
-
-	// 7. Menu Konfirmasi & Verifikasi Uninstall
-	fmt.Println("\n=================================================================")
-	fmt.Println("                  APLIKASI AKTIF DI PERANGKAT                    ")
-	fmt.Println("=================================================================")
-	fmt.Print("Hapus aplikasi sekarang? (y/n) [Default: n]: \nDelete application now? (y/n) [Default: n]: ")
-
-	pilihan, _ := reader.ReadString('\n')
-	pilihanClean := strings.ToLower(strings.TrimSpace(pilihan))
-	if pilihanClean == "y" || pilihanClean == "yes" {
-		fmt.Printf("\n-----> Menghapus %s...\n", packageName)
-		uninstallCmd := exec.Command(adbPath, "uninstall", packageName)
-		uninstallCmd.Stdout = os.Stdout
-		uninstallCmd.Stderr = os.Stderr
-		uninstallCmd.Run()
-
-		// Verifikasi Akhir
-		if isPackageStillExists(adbPath, packageName) {
-			fmt.Println("[!] ERROR: Aplikasi gagal dihapus! Coba hapus manual via HP.")
-			fmt.Println("[!] ERROR: Application failed to delete! Try deleting it manually from your device.")
-		} else {
-			fmt.Println("[OK] Konfirmasi: Aplikasi telah benar-benar terhapus.")
-			fmt.Println("[OK] Confirmation: The application has been completely deleted.")
-		}
-	} else {
-		fmt.Println("\n-----> Aplikasi dibiarkan terpasang.\n-----> Application left installed.")
-	}
-
-	tungguEnter(reader)
-}
-
-// --- FUNGSI HELPERS ---
-
-func getPackageList(adbPath string) map[string]bool {
-	list := make(map[string]bool)
-	out, err := exec.Command(adbPath, "shell", "pm", "list", "packages", "-3").Output()
-	if err != nil {
-		// Try without -3 fallback
-		out, err = exec.Command(adbPath, "shell", "pm", "list", "packages").Output()
-		if err != nil {
-			return list
-		}
-	}
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		name := strings.TrimSpace(strings.Replace(line, "package:", "", 1))
-		if name != "" {
-			list[name] = true
-		}
-	}
-	return list
-}
-
-func findNewPackage(before, after map[string]bool) string {
-	for pkg := range after {
-		if !before[pkg] {
-			return pkg
-		}
-	}
-	return ""
-}
-
-func isPackageStillExists(adbPath, pkgName string) bool {
-	out, err := exec.Command(adbPath, "shell", "pm", "list", "packages", pkgName).Output()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(out), "package:"+pkgName)
-}
-
-func setupADB() string {
-	base, err := os.Getwd()
-	if err != nil {
-		base = "."
-	}
-	adbName := "adb"
-	if runtime.GOOS == "windows" {
-		adbName = "adb.exe"
-	}
-
-	adbFile := filepath.Join(base, engineDir, "platform-tools", adbName)
-	if _, err := os.Stat(adbFile); err == nil {
-		return adbFile
-	}
-
-	// Fallback to checking system PATH
-	if path, err := exec.LookPath(adbName); err == nil {
-		return path
-	}
-
-	url, ok := adbURLs[runtime.GOOS]
-	if !ok {
-		fmt.Printf("[!] Sistem operasi %s tidak didukung untuk pengunduhan otomatis.\n", runtime.GOOS)
-		fmt.Printf("[!] OS %s not supported for auto-download.\n", runtime.GOOS)
-		return ""
-	}
-
-	fmt.Printf("[*] Engine ADB tidak ditemukan. Mendownload untuk %s...\n", runtime.GOOS)
-	fmt.Println("[*] ADB Engine not found. Downloading...")
-
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Printf("[!] Download gagal: %v\n", err)
-		return ""
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("[!] HTTP status error: %s\n", resp.Status)
-		return ""
-	}
-
-	zipName := "adb.zip"
-	f, err := os.Create(zipName)
-	if err != nil {
-		fmt.Printf("[!] Gagal membuat file zip temp: %v\n", err)
-		return ""
-	}
-
-	_, err = io.Copy(f, resp.Body)
-	f.Close()
-	if err != nil {
-		fmt.Printf("[!] Gagal mendownload content: %v\n", err)
-		os.Remove(zipName)
-		return ""
-	}
-
-	fmt.Println("[*] Mengekstrak platform-tools...")
-	err = unzip(zipName, engineDir)
-	os.Remove(zipName)
-	if err != nil {
-		fmt.Printf("[!] Gagal mengekstrak zip: %v\n", err)
-		return ""
-	}
-
-	// Set permissions for macOS/Linux
-	if runtime.GOOS != "windows" {
-		_ = os.Chmod(adbFile, 0755)
-	}
-
-	if _, err := os.Stat(adbFile); err == nil {
-		return adbFile
-	}
-	return ""
-}
-
-func unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	destAbs, err := filepath.Abs(dest)
-	if err != nil {
-		return err
-	}
-
-	for _, f := range r.File {
-		fpath := filepath.Join(dest, f.Name)
-
-		// Prevent Zip Slip vulnerability
-		fpathAbs, err := filepath.Abs(fpath)
-		if err != nil {
-			return err
-		}
-		if !strings.HasPrefix(fpathAbs, destAbs+string(filepath.Separator)) && fpathAbs != destAbs {
-			return fmt.Errorf("illegal file path in zip: %s", f.Name)
-		}
-
-		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(fpath, 0755); err != nil {
-				return err
-			}
+		args := tokenize(strings.TrimSpace(line))
+		if len(args) == 0 {
 			continue
 		}
+		cmd := strings.ToLower(args[0])
 
-		if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
-			return err
-		}
+		switch cmd {
+		case "help", "?", "h":
+			printHelp()
 
-		out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-		if err != nil {
-			return err
-		}
+		case "exit", "quit", "q":
+			fmt.Println("Goodbye.")
+			return
 
-		rc, err := f.Open()
-		if err != nil {
-			out.Close()
-			return err
-		}
+		case "devices", "ls":
+			devs, err := m.RefreshDevices(ctx)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			if len(devs) == 0 {
+				fmt.Println("(no devices connected)")
+				continue
+			}
+			for i, d := range devs {
+				marker := " "
+				if selected != nil && d.Serial == selected.Serial {
+					marker = "*"
+				}
+				fmt.Printf("  %s [%d] %-13s %s\n", marker, i+1, d.State, d.DisplayName())
+			}
+			lastPackages = nil
 
-		_, err = io.Copy(out, rc)
-		out.Close()
-		rc.Close()
-		if err != nil {
-			return err
+		case "use", "select":
+			dev, err := pickDevice(ctx, m, args[1:], r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			info := m.Client.InspectDevice(ctx, dev)
+			fmt.Printf("selected %s", dev.DisplayName())
+			if info.Model != "" || info.AndroidVer != "" {
+				fmt.Printf("  (%s Android %s, SDK %s)", info.Model, info.AndroidVer, info.SDK)
+			}
+			fmt.Println()
+			lastPackages = nil
+
+		case "apps", "list", "packages":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			userOnly := false
+			var filter string
+			for _, a := range args[1:] {
+				switch a {
+				case "-u", "--user":
+					userOnly = true
+				default:
+					if !strings.HasPrefix(a, "-") {
+						filter = a
+					}
+				}
+			}
+			pkgs, err := m.ListPackages(ctx, dev.Serial, userOnly)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			lastPackages = pkgs
+			printPackages(pkgs, filter)
+
+		case "search":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			if len(args) < 2 {
+				fmt.Fprintln(os.Stderr, "usage: search <query>")
+				continue
+			}
+			pkgs, err := m.ListPackages(ctx, dev.Serial, false)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			lastPackages = pkgs
+			printPackages(pkgs, strings.Join(args[1:], " "))
+
+		case "info", "show", "details":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			pkg, err := pickPackageWithIndex(args[1:], lastPackages, r, true)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			info, err := m.PackageInfo(ctx, dev.Serial, pkg)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			printPackageInfo(info)
+
+		case "refresh":
+			if _, err := m.RefreshDevices(ctx); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			lastPackages = nil
+			fmt.Println("refreshed.")
+
+		case "install":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			apkPath := ""
+			if len(args) >= 2 {
+				apkPath = strings.Trim(args[1], "\"'")
+			} else {
+				fmt.Print("path to APK: ")
+				raw, _ := r.ReadString('\n')
+				apkPath = strings.Trim(strings.TrimSpace(raw), "\"'")
+			}
+			fmt.Printf("installing %s ...\n", apkPath)
+			if _, err := m.InstallAPK(ctx, dev.Serial, apkPath); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Println("install succeeded.")
+			lastPackages = nil
+
+		case "launch":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			pkg, err := pickPackageWithIndex(args[1:], lastPackages, r, false)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Printf("launching %s ...\n", pkg)
+			if err := m.LaunchApp(ctx, dev.Serial, pkg); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Println("launched.")
+
+		case "stop", "force-stop":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			pkg, err := pickPackageWithIndex(args[1:], lastPackages, r, false)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Printf("force-stopping %s ...\n", pkg)
+			if err := m.ForceStopApp(ctx, dev.Serial, pkg); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Println("stopped.")
+
+		case "uninstall", "rm":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			pkg, err := pickPackageWithIndex(args[1:], lastPackages, r, false)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Printf("uninstall %s? type YES to confirm: ", pkg)
+			confirm, _ := r.ReadString('\n')
+			if strings.TrimSpace(strings.ToUpper(confirm)) != "YES" {
+				fmt.Println("aborted.")
+				continue
+			}
+			if err := m.UninstallApp(ctx, dev.Serial, pkg, false); err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Println("uninstalled.")
+			lastPackages = nil
+
+		case "mirror", "scrcpy":
+			dev, err := ensureSelected(ctx, m, selected, r)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			selected = &dev
+			fmt.Println("launching scrcpy ...")
+			cmd, err := m.Scrcpy.StartMirror(ctx, dev.Serial, "ADBPureFlow-Mirror")
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				continue
+			}
+			fmt.Printf("scrcpy started (pid %d).\n", cmd.Process.Pid)
+
+		case "version", "-v", "--version":
+			fmt.Println("ADBPureFlow CLI", version)
+
+		default:
+			fmt.Fprintf(os.Stderr, "unknown command %q (try `help`)\n", cmd)
 		}
 	}
-	return nil
 }
 
-func tungguEnter(r *bufio.Reader) {
-	fmt.Println("\nTekan Enter untuk keluar...\nPress Enter to exit...")
-	_, _ = r.ReadString('\n')
+// ---------------------------------------------------------------------------
+// Non-interactive subcommands
+// ---------------------------------------------------------------------------
+
+func runCLI(ctx context.Context, args []string) int {
+	m := mustInitManager()
+	cmd := strings.ToLower(args[0])
+
+	requireSerial := func(positional []string) (string, error) {
+		devs, err := m.RefreshDevices(ctx)
+		if err != nil {
+			return "", err
+		}
+		var online []adb.Device
+		for _, d := range devs {
+			if d.State == adb.StateDevice {
+				online = append(online, d)
+			}
+		}
+		for _, p := range positional {
+			for _, d := range online {
+				if d.Serial == p {
+					return d.Serial, nil
+				}
+			}
+		}
+		if len(online) == 1 {
+			return online[0].Serial, nil
+		}
+		if len(online) == 0 {
+			return "", fmt.Errorf("no online devices; connect one or specify a serial")
+		}
+		return "", fmt.Errorf("multiple devices online; specify a serial: %s",
+			strings.Join(serials(online), ", "))
+	}
+
+	switch cmd {
+	case "devices":
+		devs, err := m.RefreshDevices(ctx)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		for _, d := range devs {
+			fmt.Printf("%s\t%s\t%s\n", d.Serial, d.State, d.DisplayName())
+		}
+		return 0
+
+	case "version":
+		fmt.Println(version)
+		return 0
+
+	case "apps":
+		userOnly := false
+		var positional []string
+		for _, a := range args[1:] {
+			if a == "-u" || a == "--user" {
+				userOnly = true
+			} else {
+				positional = append(positional, a)
+			}
+		}
+		serial, err := requireSerial(positional)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		pkgs, err := m.ListPackages(ctx, serial, userOnly)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		for _, p := range pkgs {
+			fmt.Printf("%s\t%s\t%s\t%s\n", p.Kind, p.Name, formatVersion(p), p.DisplayTitle())
+		}
+		return 0
+
+	case "info":
+		if len(args) < 2 {
+			usage()
+			return 2
+		}
+		pkgName := args[1]
+		serial, err := requireSerial(args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		info, err := m.PackageInfo(ctx, serial, pkgName)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		printPackageInfo(info)
+		return 0
+
+	case "install":
+		if len(args) < 2 {
+			usage()
+			return 2
+		}
+		serial, err := requireSerial(args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		if _, err := m.InstallAPK(ctx, serial, args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		fmt.Println("install OK")
+		return 0
+
+	case "launch":
+		if len(args) < 2 {
+			usage()
+			return 2
+		}
+		serial, err := requireSerial(args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		if err := m.LaunchApp(ctx, serial, args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		return 0
+
+	case "stop":
+		if len(args) < 2 {
+			usage()
+			return 2
+		}
+		serial, err := requireSerial(args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		if err := m.ForceStopApp(ctx, serial, args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		return 0
+
+	case "uninstall":
+		if len(args) < 2 {
+			usage()
+			return 2
+		}
+		serial, err := requireSerial(args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		if err := m.UninstallApp(ctx, serial, args[1], false); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		fmt.Println("uninstalled", args[1])
+		return 0
+
+	case "mirror":
+		serial, err := requireSerial(args[1:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		cmd, err := m.Scrcpy.StartMirror(ctx, serial, "ADBPureFlow-Mirror")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		fmt.Printf("scrcpy started (pid %d)\n", cmd.Process.Pid)
+		_ = cmd.Wait()
+		return 0
+
+	case "help", "-h", "--help":
+		usage()
+		return 0
+
+	default:
+		fmt.Fprintf(os.Stderr, "unknown command %q\n", cmd)
+		usage()
+		return 2
+	}
+}
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+func mustInitManager() *adb.Manager {
+	dataDir := ""
+	if exe, err := os.Executable(); err == nil {
+		dataDir = filepath.Dir(exe)
+	}
+	m, err := adb.NewManager(dataDir, true)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to initialize ADB:", err)
+		fmt.Fprintln(os.Stderr, "Install adb or allow this binary to download platform-tools.")
+		os.Exit(1)
+	}
+	return m
+}
+
+func printBanner() {
+	fmt.Println("=================================================================")
+	fmt.Printf("               ADBPureFlow CLI %s                   \n", version)
+	fmt.Println("         Automated Android APK Lifecycle Companion               ")
+	fmt.Println("=================================================================")
+}
+
+func printHelp() {
+	fmt.Println(`Commands:
+  devices | ls                 list connected devices
+  use <n|serial>               select a device for subsequent commands
+  apps [-u] [query]            list installed packages (-u = user only)
+  search <query>               search apps by name / package
+  info [<pkg>|n]               show detailed info for an application
+  refresh                      re-scan connected devices
+  install <path>               install an APK onto the selected device
+  launch [<pkg>|n]             launch an app (number = from last apps/search)
+  stop [<pkg>|n]               force-stop an app
+  uninstall [<pkg>|n]          uninstall an app (prompts for confirmation)
+  mirror                       launch scrcpy screen mirror
+  version                      print CLI version
+  help                         show this help
+  exit                         quit`)
+}
+
+func tokenize(line string) []string {
+	var (
+		out []string
+		cur strings.Builder
+		inQ bool
+	)
+	for _, r := range line {
+		switch {
+		case r == '"':
+			inQ = !inQ
+		case (r == ' ' || r == '\t') && !inQ:
+			if cur.Len() > 0 {
+				out = append(out, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteRune(r)
+		}
+	}
+	if cur.Len() > 0 {
+		out = append(out, cur.String())
+	}
+	return out
+}
+
+func pickDevice(ctx context.Context, m *adb.Manager, args []string, r *bufio.Reader) (adb.Device, error) {
+	devs, err := m.RefreshDevices(ctx)
+	if err != nil {
+		return adb.Device{}, err
+	}
+	var online []adb.Device
+	for _, d := range devs {
+		if d.State == adb.StateDevice {
+			online = append(online, d)
+		}
+	}
+	if len(online) == 0 {
+		return adb.Device{}, fmt.Errorf("no online devices")
+	}
+	if len(args) >= 1 {
+		s := strings.TrimSpace(args[0])
+		if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= len(online) {
+			return online[n-1], nil
+		}
+		for _, d := range online {
+			if d.Serial == s {
+				return d, nil
+			}
+		}
+		return adb.Device{}, fmt.Errorf("no such device: %s", s)
+	}
+	if len(online) == 1 {
+		return online[0], nil
+	}
+	for i, d := range online {
+		fmt.Printf("  [%d] %s\n", i+1, d.DisplayName())
+	}
+	fmt.Print("select device (number): ")
+	raw, _ := r.ReadString('\n')
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || n < 1 || n > len(online) {
+		return adb.Device{}, fmt.Errorf("invalid selection")
+	}
+	return online[n-1], nil
+}
+
+func ensureSelected(ctx context.Context, m *adb.Manager, cur *adb.Device, r *bufio.Reader) (adb.Device, error) {
+	if cur != nil {
+		devs, err := m.RefreshDevices(ctx)
+		if err == nil {
+			for _, d := range devs {
+				if d.Serial == cur.Serial && d.State == adb.StateDevice {
+					return d, nil
+				}
+			}
+		}
+	}
+	return pickDevice(ctx, m, nil, r)
+}
+
+// pickPackageWithIndex resolves a package from CLI args, accepting either an
+// explicit package name or a numeric index into the most recent listing
+// (when allowIndex is true). When no argument is given and a reader is
+// available, it prompts interactively.
+func pickPackageWithIndex(args []string, lastPackages []adb.Package, r *bufio.Reader, allowIndex bool) (string, error) {
+	if len(args) >= 1 {
+		s := strings.TrimSpace(args[0])
+		if s == "" {
+			return "", fmt.Errorf("no package specified")
+		}
+		if allowIndex {
+			if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= len(lastPackages) {
+				return lastPackages[n-1].Name, nil
+			}
+		}
+		return s, nil
+	}
+	if allowIndex && r != nil && len(lastPackages) > 0 {
+		fmt.Println("  (from last listing)")
+		for i, p := range lastPackages {
+			fmt.Printf("    [%d] %s  %s\n", i+1, p.DisplayTitle(), p.Name)
+		}
+		fmt.Print("select app (number or package name): ")
+		raw, _ := r.ReadString('\n')
+		s := strings.TrimSpace(raw)
+		if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= len(lastPackages) {
+			return lastPackages[n-1].Name, nil
+		}
+		if s != "" {
+			return s, nil
+		}
+		return "", fmt.Errorf("no package specified")
+	}
+	return "", fmt.Errorf("no package specified")
+}
+
+func printPackages(pkgs []adb.Package, filter string) {
+	filter = strings.ToLower(filter)
+	count := 0
+	for _, p := range pkgs {
+		label := p.DisplayTitle()
+		line := fmt.Sprintf("%-16s %-16s %-40s %s", p.Kind, formatVersion(p), label, p.Name)
+		if filter != "" && !strings.Contains(strings.ToLower(line), filter) {
+			continue
+		}
+		fmt.Println(line)
+		count++
+	}
+	if count == 0 {
+		fmt.Println("(no packages match)")
+	}
+}
+
+// printPackageInfo renders a structured human-readable block of metadata.
+func printPackageInfo(p *adb.Package) {
+	fmt.Println()
+	fmt.Printf("  %s\n", p.DisplayTitle())
+	fmt.Printf("  %s\n", p.Name)
+	fmt.Println(strings.Repeat("-", 60))
+	rows := []struct{ k, v string }{
+		{"Type", p.Kind.String()},
+		{"Version", dashIfEmpty(p.VersionSummary())},
+		{"Enabled", yesNo(p.Enabled)},
+		{"Installer", dashIfEmpty(p.Installer)},
+		{"APK path", dashIfEmpty(p.Path)},
+		{"UID", dashIfEmpty(i64toa(int64(p.UID)))},
+		{"Target SDK", dashIfEmpty(i64toa(int64(p.TargetSdk)))},
+		{"Min SDK", dashIfEmpty(i64toa(int64(p.MinSdk)))},
+		{"First installed", adb.FormatMillis(p.FirstInstall)},
+		{"Last updated", adb.FormatMillis(p.LastUpdate)},
+	}
+	for _, r := range rows {
+		fmt.Printf("  %-16s %s\n", r.k+":", r.v)
+	}
+	if len(p.SplitCodePaths) > 0 {
+		fmt.Printf("  %-16s\n", "Split APKs:")
+		for _, s := range p.SplitCodePaths {
+			fmt.Printf("                 %s\n", s)
+		}
+	}
+	fmt.Println()
+}
+
+func formatVersion(p adb.Package) string {
+	return p.VersionSummary()
+}
+
+func shortSerial(s string) string {
+	if len(s) <= 12 {
+		return s
+	}
+	return s[:8] + "…"
+}
+
+func serials(ds []adb.Device) []string {
+	out := make([]string, 0, len(ds))
+	for _, d := range ds {
+		out = append(out, d.Serial)
+	}
+	return out
+}
+
+func dashIfEmpty(s string) string {
+	if s == "" || s == "-1" {
+		return "—"
+	}
+	return s
+}
+
+func yesNo(b bool) string {
+	if b {
+		return "Yes"
+	}
+	return "No"
+}
+
+func i64toa(v int64) string {
+	if v <= 0 {
+		return ""
+	}
+	return strconv.FormatInt(v, 10)
 }
