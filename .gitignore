@@ -1,0 +1,20 @@
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+/dist/
+/build/
+/out/
+
+# Runtime-provisioned Android tools
+adb_engine/
+scrcpy_core/
+**/adb_engine/
+**/scrcpy_core/
+
+# Temporary archives and logs
+*.zip
+*.tar.gz
+*.log
+.adbpureflow/

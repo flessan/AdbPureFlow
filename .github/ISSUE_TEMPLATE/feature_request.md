@@ -1,23 +1,23 @@
 ---
 name: Feature Request
-about: Suggest an idea or enhancement for ADBPureFlow
+about: Suggest a focused AdbPureFlow improvement
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**What workflow would this improve?**
+Choose one: Devices / Wireless Debugging / Screen / APK / Apps / Logs / Deploy / Workflows / Diagnostics / Windows Integration / Other.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen. How would this feature work?
+**Describe the problem**
+What Android device-management or development task is currently difficult?
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Describe the proposed solution**
+What should AdbPureFlow let the user do without requiring manual ADB/scrcpy commands?
 
-**How does this fit the project scope?**
-Why is this enhancement important to the broader ADBPureFlow developer community?
+**Windows-native expectations**
+If this touches files, windows, notifications, clipboard, Explorer, shortcuts, or settings, describe the expected Windows behavior.
 
-**Additional context**
-Add any other context, mockup designs, or screenshots about the feature request here.
+**Technical notes**
+If you know the relevant ADB/scrcpy/Android behavior, include it here. Please avoid proposals that only add decorative UI without a reliable underlying operation.
