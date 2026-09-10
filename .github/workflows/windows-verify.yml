@@ -1,0 +1,131 @@
+name: Windows Verification
+
+on:
+  push:
+    branches:
+      - main
+      - arena/*
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-gui-and-cli:
+    name: Windows GUI/CLI build and tests
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    env:
+      CGO_ENABLED: "1"
+      CC: gcc
+      VERSION: ci-${{ github.run_number }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21.x"
+          cache: true
+          cache-dependency-path: |
+            GUI/go.sum
+            CLI/go.sum
+
+      - name: Setup MinGW for Fyne/cgo
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+
+      - name: Add MinGW to PATH
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Download GUI modules
+        shell: pwsh
+        run: |
+          Push-Location GUI
+          go mod download
+          Pop-Location
+
+      - name: Download CLI modules
+        shell: pwsh
+        run: |
+          Push-Location CLI
+          go mod download
+          Pop-Location
+
+      - name: Check Go formatting
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go | ForEach-Object { $_.FullName }
+          $unformatted = gofmt -l $files
+          if ($unformatted) {
+            Write-Error "Go files need formatting:`n$($unformatted -join "`n")"
+          }
+
+      - name: Test GUI
+        shell: pwsh
+        run: |
+          Push-Location GUI
+          go test -v ./...
+          Pop-Location
+
+      - name: Test CLI
+        shell: pwsh
+        run: |
+          Push-Location CLI
+          go test -v ./...
+          Pop-Location
+
+      - name: Vet GUI
+        shell: pwsh
+        run: |
+          Push-Location GUI
+          go vet ./...
+          Pop-Location
+
+      - name: Vet CLI
+        shell: pwsh
+        run: |
+          Push-Location CLI
+          go vet ./...
+          Pop-Location
+
+      - name: Build Windows executable and checksum
+        shell: pwsh
+        run: |
+          .\scripts\build-windows.ps1 -Version $env:VERSION -OutDir dist
+
+      - name: Verify release files
+        shell: pwsh
+        run: |
+          $exe = "dist\AdbPureFlow-$env:VERSION-windows-amd64.exe"
+          $checksums = "dist\checksums-$env:VERSION.txt"
+          $readme = "dist\README-WINDOWS.txt"
+          if (-not (Test-Path $exe)) { throw "Missing executable: $exe" }
+          if (-not (Test-Path $checksums)) { throw "Missing checksum file: $checksums" }
+          if (-not (Test-Path $readme)) { throw "Missing Windows readme: $readme" }
+          $expected = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $actual = (Get-Content $checksums | Select-String (Split-Path $exe -Leaf)).ToString().Split()[0]
+          if ($expected -ne $actual) { throw "Checksum mismatch for $exe" }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdbPureFlow-${{ env.VERSION }}-windows-amd64
+          path: |
+            dist/AdbPureFlow-${{ env.VERSION }}-windows-amd64.exe
+            dist/checksums-${{ env.VERSION }}.txt
+            dist/README-WINDOWS.txt
+          if-no-files-found: error
