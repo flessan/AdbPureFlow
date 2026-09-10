@@ -25,8 +25,8 @@ const engineDir = "adb_engine"
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("=================================================================")
-	fmt.Println("               ADBPureFlow CLI Pro v5.0                          ")
-	fmt.Println("         Automated Android APK Lifecycle Companion               ")
+	fmt.Println("                 AdbPureFlow Legacy CLI                         ")
+	fmt.Println("             APK install helper (desktop app preferred)          ")
 	fmt.Println("=================================================================")
 
 	// 1. Setup ADB

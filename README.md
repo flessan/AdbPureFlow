@@ -1,146 +1,219 @@
-# ADBPureFlow, 4devs,2devs.
+# AdbPureFlow
 
-[![Build & Test](https://github.com/flessan/adbpureflow/actions/workflows/ci.yml/badge.svg)](https://github.com/flessan/adbpureflow/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/flessan/adbpureflow?filename=GUI%2Fgo.mod)](https://go.dev/)
-[![Release](https://img.shields.io/github/v/release/flessan/adbpureflow)](https://github.com/flessan/adbpureflow/releases)
-[![License](https://img.shields.io/github/license/flessan/adbpureflow)](./LICENSE)
-[![Security Policy](https://img.shields.io/badge/Security-Supported-brightgreen.svg)](./SECURITY.md)
+AdbPureFlow is being reworked into a **Windows-first native Android device management and development workstation**. It helps you connect a phone, understand its state, mirror and control the screen, install APKs, manage apps, read logs, and run repeatable deploy flows without living inside an ADB terminal.
 
-An elegant, portable, cross-platform utility built in **Go** to completely automate the Android APK lifecycle: automatically download standard ADB binaries, run high-speed screen mirroring, detect newly installed package IDs without guesswork, and perform secure uninstalls.
+The desktop app is written in Go with a Fyne native GUI. It is not an Electron/web dashboard wrapper.
 
----
+## Current implementation status
 
-## +_= | Highlights & Key Features
+This repository has started the migration from the earlier APK installer/mirror utility into the new desktop product. The current GUI provides working foundations for:
 
-*   **Zero-Configuration Portable Engine:** Checks and automatically provisions platform tools (ADB) and screen mirrors (`scrcpy`) for Windows, macOS, and Linux out-of-the-box.
-*   **High-Speed Mirroring:** Instantly launches screen mirroring powered by hardware-accelerated Scrcpy.
-*   **Intelligent App-ID Identifier:** Grabs package listings before and after installation to accurately detect your new package ID (averting hidden names or spoofing).
-*   **Auto-Launch Category:** Instantly opens the app post-installation on the device.
-*   **Guaranteed Clean Cleanup:** Wipe the app on demand and confirm with absolute verification that no leftover data is left behind.
-*   **Fully Secure Extractions:** Patched with Zip Slip and Tar Slip protections for safe component decompression.
+- Device-centric shell with workspaces: Devices, Screen, Apps, Logs, Deploy, Workflows, Diagnostics, and Help.
+- Safe direct process execution with context cancellation, timeouts, exit codes, stdout/stderr capture, streaming output, and structured errors.
+- ADB discovery/provisioning and typed ADB operations.
+- USB and wireless device listing with model/status/transport details and enrichment where available.
+- Real Wireless Debugging pairing-code flow via `adb pair host:port code` and connect flow via `adb connect host:port`.
+- scrcpy discovery/provisioning and managed screen mirror lifecycle, with companion-window status feedback and cleanup on shutdown.
+- Screenshot capture through native Save File dialog with optional Explorer handoff after saving.
+- Recording start flow through native Save File dialog; output is verified when the scrcpy companion process exits.
+- APK drag/drop or file selection, APK zip validation, size/SHA-256, and `aapt`-powered package/version/SDK/permission metadata when Android build-tools are available.
+- Install/reinstall, launch, force stop, clear app data, uninstall, and searchable app list with user/system distinction when requested.
+- Live logcat streaming with readable rows, pause/resume/stop, text and level filtering, clear/reset, bounded visible buffer, and raw technical detail preserved.
+- Deploy workflow: install APK → optional clear data → launch → optional mirror/logs.
+- Diagnostics/Doctor checks for ADB executable capability, device visibility/authorization, and scrcpy capability, plus an ADB server restart action.
+- Passive device monitoring with explicit selection when multiple devices are present.
+- Known wireless endpoint reconnect/forget actions and local device aliases.
+- First-launch onboarding with “Baru di sini? / New here?” and reopenable Help & Tutorials.
+- Settings for theme selection and persisted non-sensitive user state in per-user application data.
+- Clipboard shortcuts/actions for device serials and package names, plus desktop notifications for completed long-running actions where supported by the OS.
+- Command palette via `Ctrl+K`; refresh devices via `Ctrl+R`.
 
----
+See [`docs/AUDIT.md`](docs/AUDIT.md) for the repository audit, [`docs/HARDENING.md`](docs/HARDENING.md) for reliability findings, [`docs/WINDOWS_READINESS.md`](docs/WINDOWS_READINESS.md) for Windows verification notes, [`docs/WINDOWS_SMOKE_TEST.md`](docs/WINDOWS_SMOKE_TEST.md) for manual runtime validation, [`docs/DEVICE_TEST_MATRIX.md`](docs/DEVICE_TEST_MATRIX.md) for real-device coverage, [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for failure recovery, [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) for release gates, and [`docs/WIRELESS_DEBUGGING.md`](docs/WIRELESS_DEBUGGING.md) for the Wireless Debugging support boundary.
 
-## +_= | System Architecture
+## Capability status
 
-ADBPureFlow functions as a fast, high-performance mediator between your machine and Android's SDK binaries.
+- **Implemented and unit-tested in this repository:** core ADB command construction, parser logic, APK validation/hash inspection, workflow failure propagation, app-state fallback/persistence, selected-device reconciliation, and bounded log buffering.
+- **Implemented but still requires Windows/device runtime verification:** Fyne GUI startup/shutdown, native Windows dialogs/notifications/Explorer handoff, USB device operations, Wireless Debugging pairing-code flow, scrcpy mirror/recording, real APK install/manage actions, and live logcat behavior.
+- **Platform-dependent:** automatic ADB/scrcpy provisioning and native file-manager handoff.
+- **Not implemented:** Wireless Debugging QR pairing. The app intentionally does not ship a fake QR code.
 
-```
-       +---------------------------------------------+
-       |             ADBPureFlow Interface           |
-       |             (Fyne GUI / CLI console)        |
-       +-------+-----------------------------+-------+
-               |                             |
-               v (File Drop)                 v (Toolbar Action)
-+---------------+--------------+     +--------+--------------+
-|     Automated Installer      |     |    Scrcpy Mirroring   |
-|                              |     |                       |
-| 1. Audits existing packages  |     | 1. Query device port  |
-| 2. Standard ADB install -r-d |     | 2. Run high-FPS stream|
-| 3. Snapshot Diff -> App ID   |     | 3. Set custom title   |
-| 4. Auto-Launch via Monkey    |     |                       |
-+--------------+--------------+      +-------+---------------+
-               |                             |
-               +--------------+--------------+
-                              |
-                              v
-                +-------------+-------------+
-                |    Target Android Device  |
-                +---------------------------+
-```
+## Product principles
 
----
+- Users think in actions: **connect my phone**, **show my screen**, **install this APK**, **manage apps**, **see why my app crashed**, **deploy this build**.
+- ADB, Wireless Debugging, scrcpy, package management, and logcat remain behind clear native UI flows.
+- Windows conventions matter: normal executable, native windows, native open/save dialogs, keyboard shortcuts, DPI-aware UI, and familiar filesystem behavior.
+- AdbPureFlow does not duplicate Windows Explorer unless Android-specific capabilities require it.
+- Visible features should either perform real device operations or clearly explain why they are unavailable.
 
-## +_= | Installation & Zero-Config Setup
+## Prerequisites
 
-ADBPureFlow is shipped as a portable, single-command tool requiring **zero pre-existing configurations**.
+### For users
 
-### Method 1: Using Compiled Release Binaries (Recommended)
-1. Head over to the [GitHub Releases](https://github.com/flessan/adbpureflow/releases) tab.
-2. Download the binary matching your platform:
-   - **Windows:** `adbpureflow-gui-windows-amd64.exe` / `adbpureflow-cli-windows-amd64.exe`
-   - **macOS:** `adbpureflow-gui-darwin-amd64` / `adbpureflow-cli-darwin-amd64`
-   - **Linux:** `adbpureflow-gui-linux-amd64` / `adbpureflow-cli-linux-amd64`
-3. Run and execute! (On macOS/Linux, make sure to grant run permissions: `chmod +x adbpureflow-*`).
+- Windows 10/11 is the primary target.
+- Android device with Developer Options and USB Debugging enabled.
+- For wireless devices: Android 11+ Wireless debugging is recommended.
+- Internet access on first run if ADB/platform-tools or scrcpy need to be automatically downloaded.
+- Optional: Android build-tools `aapt` on PATH for richer APK metadata inspection.
 
-### Method 2: Building From Source
+### For developers
 
-#### Prerequisites
-- **Go**: Version 1.20 or newer.
-- **GCC compiler** (only required to compile Fyne GUI dependencies):
-  - **Linux:** Install OpenGL/X11 tools: `sudo apt-get install -y libgl1-mesa-dev libegl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxxf86vm-dev`.
-  - **macOS:** Included default in Xcode tools.
-  - **Windows:** MinGW-w64.
+- Go 1.21 or newer.
+- For Fyne GUI builds:
+  - Windows: a working C toolchain such as MinGW-w64.
+  - Linux CI/dev: OpenGL/X11 development packages.
+  - macOS: Xcode command line tools.
 
-#### Run the CLI Interface
-```bash
-cd CLI
-go run main.go
-```
+## Build and run
 
-#### Run the GUI Interface
+### Native desktop GUI
+
 ```bash
 cd GUI
-go run main.go app.go
+go run .
 ```
 
----
+### Windows executable
 
-## +_= | Detailed Usage Instructions
+```powershell
+.\scripts\build-windows.ps1 -Version dev
+```
 
-### Using the GUI Dashboard
-1. Connect your Android device via USB (or over local WiFi). Ensure **USB Debugging** is toggled on inside Developer Options.
-2. Launch the GUI. The device selector will scan and display your phone model automatically.
-3. **Install & Run:** Drag and drop any `.apk` file into the window (or click the File icon). The logs will live-update as it gets deployed, and the application will instantly start playing on your phone!
-4. **Mirror Screen:** Click the Play icon (`MediaPlayIcon`) to start streaming your phone's screen in 60fps.
-5. **Uninstall:** Click the Trash icon (`DeleteIcon`), type the package ID, and ADBPureFlow will securely purge the software.
+The script runs GUI tests, builds `dist\AdbPureFlow-dev-windows-amd64.exe`, and writes `dist\checksums-dev.txt`. Use `-SkipTests` only when dependency/network issues are already understood and tests have been run elsewhere.
 
-### Using the CLI Console
-1. Run the `adbpureflow-cli` executable.
-2. Drag-and-drop or type the path to your `.apk` package and press Enter.
-3. The console automatically coordinates package diffing and triggers an automatic launch.
-4. It prompts you: `Hapus aplikasi sekarang? / Delete application now? (y/n)`. Typing `y` immediately sweeps the app, confirming deep deletion.
+Manual equivalent:
 
----
+```bash
+cd GUI
+go build -trimpath -ldflags="-s -w -H windowsgui -X main.version=dev" -o ..\dist\AdbPureFlow-dev-windows-amd64.exe .
+```
 
-## +_= | Environment Configurations
+The local build script is the documented Windows build path. A dedicated Windows CI workflow should be added once repository workflow-file permissions are available.
 
-ADBPureFlow is portable, but can also be fine-tuned using these environment variables or local structures:
+### Legacy CLI helper
 
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| System PATH | `adb` | If you have ADB pre-installed in your environment, ADBPureFlow uses it instantly. |
-| `scrcpy_core/` | Directory | Local component storage where automated binaries get safely unzipped. |
+The CLI remains available while the desktop migration continues:
 
----
+```bash
+cd CLI
+go run .
+```
 
-## +_= | Troubleshooting FAQ
+## Main workflows
 
-#### Q1: No devices are showing up in the selector.
-- **A:** Ensure your phone is connected and USB Debugging is turned on. Run `adb devices` in your command shell to verify your machine acknowledges the hardware. Try replugging your cable.
+### Connect a device over USB
 
-#### Q2: It fails to launch Screen Mirroring.
-- **A:** Mirroring requires a device with USB Debugging enabled. Ensure your device screen is unlocked and not in a sleep state.
+1. Enable Developer Options and USB Debugging on Android.
+2. Connect the phone with a data-capable USB cable.
+3. Unlock the phone and accept the RSA debugging prompt.
+4. Open AdbPureFlow and press **Refresh**.
+5. Select the device from the device selector.
 
-#### Q3: Compiling the GUI on Linux errors with missing packages.
-- **A:** Make sure you installed all OpenGL/X11 header requirements using the command described in the [Developer Setup](#prerequisites) section.
+### Add a wireless device
 
----
+1. On Android 11+, open **Developer options → Wireless debugging**.
+2. Choose **Pair device with pairing code**.
+3. In AdbPureFlow, choose **Add Wireless**.
+4. Enter the pairing address and pairing code exactly as Android shows them.
+5. Enter the normal connect address/port shown by Android Wireless debugging.
+6. AdbPureFlow runs the real `adb pair` and `adb connect` flow, then refreshes devices.
 
-## +_= | Security, Standards & Verification
+QR pairing is not faked. If a future implementation supports Android’s QR payload format reliably, it can be added without changing the device model or ADB service.
 
-- **Secure Archive Extractors:** Decompression routines strictly validate paths to prevent directory traversal exploits.
-- **Validated Inputs:** Raw file parameters are explicitly checked for system existence before executing commands.
-- **No Hardcoded Credentials:** Contains zero hardcoded tokens, hashes, or tracking telemetry.
+### Mirror and control the screen
 
----
+1. Select an authorized device.
+2. Open **Screen**.
+3. Choose quality/fullscreen/always-on-top options.
+4. Press **Start Mirror**.
 
-## +_= | Project Contribution & Community
+AdbPureFlow manages the scrcpy process and opens a normal native scrcpy companion window. Use **Stop Mirror** to end the managed process. Screenshots and recordings use native Save File dialogs; after a screenshot is saved, AdbPureFlow can hand off to Explorer.
 
-We are fully open-source and welcoming of active contributors! Please inspect our documentation to learn more about how we build features:
-- [Contributing Guide](./CONTRIBUTING.md)
-- [Code of Conduct](./CODE_OF_CONDUCT.md)
-- [Security Disclosures](./SECURITY.md)
-- [Project Roadmap](./ROADMAP.md)
+### Install an APK
 
-*Built with passion for a cleaner, modern Android development experience. Made portable and fast using Go.*
+- Drag a `.apk` file onto the window, or use the command palette (`Ctrl+K`) → **Install APK**.
+- Review APK information.
+- Choose install options and press **Install to selected device**.
+- AdbPureFlow installs with ADB, optionally clears app data, and optionally launches the app when the package ID is known.
+
+### Manage apps
+
+1. Select a device.
+2. Open **Apps**.
+3. Search installed user applications.
+4. Use actions: **Launch**, **Stop**, **Clear**, **Uninstall**.
+
+### Read logs
+
+1. Select a device.
+2. Open **Logs**.
+3. Press **Start**.
+4. Filter by text/tag/package/message and by log level.
+5. Pause/resume, stop, or clear device logs as needed. The visible list keeps the latest 2,000 entries for responsiveness.
+
+### Deploy
+
+The Deploy workspace runs a deterministic developer flow:
+
+1. Choose an APK artifact.
+2. Optionally set package name if metadata extraction cannot infer it.
+3. Choose options: clear data, start mirror, open logs.
+4. Press **Deploy**.
+
+The underlying workflow engine executes steps with cancellation/error state and is designed to support persistent user workflows later.
+
+## Application data and tools
+
+AdbPureFlow stores non-sensitive state such as onboarding completion, selected theme, recently used APK paths, remembered wireless endpoints, and the last selected device serial in the current user's config directory. Downloaded external tools are stored under the current user's cache/config tools directory, not beside the executable, so a normal Windows installation should not require administrator rights.
+
+## Diagnostics
+
+Open **Diagnostics** to check:
+
+- ADB availability and version.
+- ADB server responsiveness.
+- Connected/authorized devices.
+- scrcpy availability.
+
+Failures include human recovery suggestions and expandable technical details.
+
+## Tests
+
+Hardware-free tests are the default:
+
+```bash
+cd GUI
+go test ./...
+
+cd ../CLI
+go test ./...
+```
+
+Tests cover parsers, APK metadata handling, archive discovery, and legacy package detection. Future integration tests that require real Android hardware should be gated behind an explicit environment variable so normal CI does not depend on connected devices.
+
+## Release notes
+
+The local Windows release-candidate layout is produced by `scripts/build-windows.ps1`. A dedicated Windows GitHub Actions workflow is intentionally not included in this branch because the current automation credentials cannot update `.github/workflows/` files.
+
+The expected Windows release layout is:
+
+```text
+AdbPureFlow-<version>-windows-amd64.exe
+checksums-<version>.txt
+README-WINDOWS.txt
+```
+
+ADB and scrcpy are not bundled in that layout unless a future release explicitly documents licensing, provenance, and update policy. Future release work should add Windows version resources, icons, signing, and an installer/package without requiring administrator privileges unless a concrete feature needs it.
+
+## Repository layout
+
+```text
+GUI/        Native desktop application and Android workstation core
+CLI/        Legacy command-line APK helper retained during migration
+docs/       Architecture/audit documentation
+website/    Existing static project page
+.github/    CI/CD workflow
+```
+
+## Security
+
+AdbPureFlow executes external tools directly with argument arrays rather than shell command strings where practical. Archive extraction validates paths to prevent Zip Slip/Tar Slip traversal. No credentials or telemetry are hardcoded.

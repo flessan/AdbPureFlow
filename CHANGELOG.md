@@ -1,41 +1,32 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
----
-
-## [5.0.0] - 2026-08-04
-
-### Added
-- **Full Cross-Platform Support:** Refactored both CLI and GUI setups to automatically download, identify, and configure platform tools (ADB, Scrcpy) for macOS, Linux, and Windows, rather than forcing Windows-specific `.exe` tools.
-- **Zip & Tar Slip Preventions:** Patched major security loopholes in file decompression helpers in both CLI and GUI backends, preventing directory traversal vulnerabilities.
-- **Modernized Landing Page:** Completely redesigned the static website interface into an ultra-modern dark/light mode dashboard with a live browser-based simulator.
-- **Robust Multi-Platform CI/CD Pipeline:** Fully configured a GitHub Actions pipeline compiling both Go Fyne GUI and Go CLI binaries, verifying format compliance, running test coverage, and publishing tagged releases automatically.
-- **Detailed Unit Testing:** Wrote initial test suites with mocking mechanisms covering string package parsing and directory indexing.
+## Unreleased
 
 ### Changed
-- Improved error feedback on ADB download interruptions, missing permissions, and non-existent APK file targets.
-- Cleaned up obsolete platform tool dependencies and redundant legacy files.
 
----
-
-## [4.0.0] - 2026-03-12
-
-### Added
-- Integrated basic support for launching screen mirroring using `scrcpy`.
-- Developed interactive desktop panel utilizing the Fyne toolkit.
-
-### Fixed
-- Fixed critical directory lookup bugs for device selection.
-
----
-
-## [1.0.0] - 2025-11-20
+- Repositioned AdbPureFlow as a Windows-first native Android device management and development workstation.
+- Reworked the GUI from a single APK installer window into a device-centric shell with Devices, Screen, Apps, Logs, Deploy, Workflows, Diagnostics, and Help workspaces.
+- Introduced typed domain models and a process-runner abstraction for ADB/scrcpy operations.
+- Rewrote documentation to match the desktop product direction.
 
 ### Added
-- Initial release of the CLI utility.
-- Basic drag-and-drop mechanics for installing `.apk` packages over USB.
-- Core automated package identity-verifications using before-and-after state snapshots.
+
+- Real wireless debugging pairing-code workflow using `adb pair` and `adb connect`.
+- Device enrichment for manufacturer, model, Android version, SDK, battery, screen size, and storage where available.
+- Managed scrcpy lifecycle, mirror options, and screenshot capture through native Save File dialogs.
+- APK inspection with zip validation, SHA-256, size, and optional `aapt` badging metadata.
+- Apps workspace with searchable user-app list and actions for launch, force-stop, clear data, and uninstall.
+- Logs workspace with live `logcat` streaming, filtering, pause/resume, and clear behavior.
+- Deploy workflow backed by an extensible Flow engine.
+- Diagnostics/Doctor checks for ADB, ADB server, devices/authorization, and scrcpy.
+- First-launch onboarding and Help & Tutorials content.
+- Windows build helper script with SHA-256 checksum output.
+- Persistent non-sensitive app state in per-user config storage.
+- Removed checked-in executable/platform-tools artifacts; runtime tools are now provisioned/discovered and ignored by Git.
+- Passive device monitor, strict package/address validation, deterministic selected-device reconciliation, bounded log buffering, log stop/level filtering, deploy cancellation, screen recording entry point, clipboard actions, theme setting, device aliases, wireless reconnect/forget actions, screenshot file-manager handoff, and hardened Windows build script.
+- Manual Windows smoke test, real-device test matrix, troubleshooting bundle, release checklist, and Windows release README template.
+
+### Retained
+
+- Legacy CLI helper remains available during migration.
+- ADB and scrcpy auto-provisioning retain archive traversal protections.
