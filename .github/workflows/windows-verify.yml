@@ -1,4 +1,3 @@
-```yaml
 name: Windows Verification
 
 on:
@@ -187,4 +186,3 @@ jobs:
             dist/checksums-${{ env.VERSION }}.txt
             dist/README-WINDOWS.txt
           if-no-files-found: error
-```
