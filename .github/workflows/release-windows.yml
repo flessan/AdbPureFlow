@@ -1,3 +1,4 @@
+```yaml
 name: Windows Release Candidate
 
 on:
@@ -37,9 +38,12 @@ jobs:
         shell: pwsh
         run: |
           if ($env:GITHUB_REF_TYPE -eq "tag") {
-            "VERSION=$env:GITHUB_REF_NAME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          } else {
-            "VERSION=${{ inputs.version }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "VERSION=$env:GITHUB_REF_NAME" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          }
+          else {
+            "VERSION=${{ inputs.version }}" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
           }
 
       - name: Setup Go
@@ -63,14 +67,40 @@ jobs:
       - name: Add MinGW to PATH
         shell: pwsh
         run: |
-          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "C:\msys64\mingw64\bin" |
+            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Format check
+      - name: Download GUI modules
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go | ForEach-Object { $_.FullName }
-          $unformatted = gofmt -l $files
-          if ($unformatted) {
+          Push-Location GUI
+          try {
+            go mod download
+          }
+          finally {
+            Pop-Location
+          }
+
+      - name: Download CLI modules
+        shell: pwsh
+        run: |
+          Push-Location CLI
+          try {
+            go mod download
+          }
+          finally {
+            Pop-Location
+          }
+
+      - name: Check Go formatting
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go |
+            ForEach-Object { $_.FullName }
+
+          $unformatted = @(gofmt -l $files)
+
+          if ($unformatted.Count -gt 0) {
             Write-Error "Go files need formatting:`n$($unformatted -join "`n")"
           }
 
@@ -78,34 +108,52 @@ jobs:
         shell: pwsh
         run: |
           Push-Location GUI
-          go test -v ./...
-          Pop-Location
+          try {
+            go test -v ./...
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Test CLI
         shell: pwsh
         run: |
           Push-Location CLI
-          go test -v ./...
-          Pop-Location
+          try {
+            go test -v ./...
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Vet GUI
         shell: pwsh
         run: |
           Push-Location GUI
-          go vet ./...
-          Pop-Location
+          try {
+            go vet ./...
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Vet CLI
         shell: pwsh
         run: |
           Push-Location CLI
-          go vet ./...
-          Pop-Location
+          try {
+            go vet ./...
+          }
+          finally {
+            Pop-Location
+          }
 
       - name: Build release layout
         shell: pwsh
         run: |
-          .\scripts\build-windows.ps1 -Version $env:VERSION -OutDir dist
+          .\scripts\build-windows.ps1 `
+            -Version $env:VERSION `
+            -OutDir dist
 
       - name: Verify release layout
         shell: pwsh
@@ -115,9 +163,13 @@ jobs:
             "dist\checksums-$env:VERSION.txt",
             "dist\README-WINDOWS.txt"
           )
+
           foreach ($path in $required) {
-            if (-not (Test-Path $path)) { throw "Missing release file: $path" }
+            if (-not (Test-Path $path)) {
+              throw "Missing release file: $path"
+            }
           }
+
           Get-Content "dist\checksums-$env:VERSION.txt"
 
       - name: Upload release candidate artifact
@@ -131,7 +183,12 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || inputs.publish_release == true)
+        if: >
+          startsWith(github.ref, 'refs/tags/v') &&
+          (
+            github.event_name == 'push' ||
+            inputs.publish_release == true
+          )
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -139,3 +196,4 @@ jobs:
             dist/checksums-${{ env.VERSION }}.txt
             dist/README-WINDOWS.txt
           generate_release_notes: true
+```
