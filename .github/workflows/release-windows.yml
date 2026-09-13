@@ -1,4 +1,3 @@
-```yaml
 name: Windows Release Candidate
 
 on:
@@ -196,4 +195,3 @@ jobs:
             dist/checksums-${{ env.VERSION }}.txt
             dist/README-WINDOWS.txt
           generate_release_notes: true
-```
