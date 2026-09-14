@@ -1,0 +1,123 @@
+name: One-time Windows console popup fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply source fix
+        shell: python
+        run: |
+          from pathlib import Path
+
+          app = Path("GUI/app.go")
+          text = app.read_text(encoding="utf-8")
+
+          old = 'cmd := exec.CommandContext(ctx, executable, args...)'
+          if text.count(old) != 3:
+              raise SystemExit(f"expected 3 OSRunner command sites, found {text.count(old)}")
+
+          text = text.replace(
+              old,
+              old + '\n\tconfigureCommand(cmd)',
+              3,
+          )
+
+          old_capture = 'cmd := exec.CommandContext(ctx, executable, args...)'
+          # CaptureScreenshot is intentionally patched separately below by matching
+          # its command block, because it is not part of OSRunner.
+          marker = 'func CaptureScreenshot('
+          start = text.find(marker)
+          if start == -1:
+              raise SystemExit("CaptureScreenshot not found")
+          cmd_pos = text.find(old_capture, start)
+          if cmd_pos == -1:
+              raise SystemExit("CaptureScreenshot command not found")
+          insert_at = cmd_pos + len(old_capture)
+          if 'configureCommand(cmd)' not in text[insert_at:insert_at + 64]:
+              text = text[:insert_at] + '\n\tconfigureCommand(cmd)' + text[insert_at:]
+
+          app.write_text(text, encoding="utf-8")
+
+          Path("GUI/process_windows.go").write_text('''//go:build windows
+
+package main
+
+import (
+    "os/exec"
+    "syscall"
+)
+
+// configureCommand prevents console-based helper processes such as adb.exe
+// from flashing a transient console window when launched by the GUI app.
+func configureCommand(cmd *exec.Cmd) {
+    if cmd == nil {
+        return
+    }
+    cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+}
+''', encoding="utf-8")
+
+          Path("GUI/process_other.go").write_text('''//go:build !windows
+
+package main
+
+import "os/exec"
+
+func configureCommand(cmd *exec.Cmd) {}
+''', encoding="utf-8")
+
+          Path("GUI/process_windows_test.go").write_text('''//go:build windows
+
+package main
+
+import (
+    "os/exec"
+    "testing"
+)
+
+func TestConfigureCommandHidesWindowsWindow(t *testing.T) {
+    cmd := exec.Command("cmd.exe", "/c", "exit", "0")
+    configureCommand(cmd)
+    if cmd.SysProcAttr == nil {
+        t.Fatal("expected Windows process attributes")
+    }
+    if !cmd.SysProcAttr.HideWindow {
+        t.Fatal("expected child console window to be hidden")
+    }
+}
+''', encoding="utf-8")
+
+      - name: Format and test GUI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd GUI
+          gofmt -w app.go process_windows.go process_other.go process_windows_test.go
+          go test .
+          go vet .
+          cd ..
+          git diff --check
+
+      - name: Commit fix and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GUI/app.go GUI/process_windows.go GUI/process_other.go GUI/process_windows_test.go
+          git rm .github/workflows/fix-windows-console-popup.yml
+          git commit -m "Fix Windows console popup from helper processes"
+          git push origin HEAD:main
