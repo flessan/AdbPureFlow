@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="AdbPureFlow is a Windows-first native Android device management and development workstation for devices, screen mirroring, APKs, apps, logs, and deploy flows.">
+    <meta name="description"
+        content="AdbPureFlow is a Windows-first native Android device management and development workstation for devices, screen mirroring, APKs, apps, logs, and deploy flows.">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="ADBPureFlow">
-    <meta property="og:description" content="A practical open-source utility for everyday Android device and APK workflows.">
+    <meta property="og:description"
+        content="A practical open-source utility for everyday Android device and APK workflows.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://adbpure.pages.dev/">
-    <title>ADBPureFlow — Practical Android device management</title>
+    <title>ADBPureFlow - Practical Android device management</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <script>
         try {
@@ -23,49 +26,54 @@
     <link rel="stylesheet" href="./gudang/gaya.blu.css">
     <script src="./site.js" defer></script>
 </head>
+
 <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <svg class="svg-sprite" aria-hidden="true">
         <symbol id="icon-download" viewBox="0 0 24 24">
-            <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14"/>
+            <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14" />
         </symbol>
         <symbol id="icon-github" viewBox="0 0 24 24">
-            <path fill="currentColor" stroke="none" d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18A11 11 0 0 1 12 6.11c.98 0 1.96.13 2.88.39 2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.25c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/>
+            <path fill="currentColor" stroke="none"
+                d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18A11 11 0 0 1 12 6.11c.98 0 1.96.13 2.88.39 2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.25c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
         </symbol>
         <symbol id="icon-sun" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>
+            <circle cx="12" cy="12" r="3.5" />
+            <path
+                d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
         </symbol>
         <symbol id="icon-moon" viewBox="0 0 24 24">
-            <path d="M20.1 15.2A8.5 8.5 0 0 1 8.8 3.9a8.5 8.5 0 1 0 11.3 11.3Z"/>
+            <path d="M20.1 15.2A8.5 8.5 0 0 1 8.8 3.9a8.5 8.5 0 1 0 11.3 11.3Z" />
         </symbol>
         <symbol id="icon-arrow" viewBox="0 0 24 24">
-            <path d="M5 12h14m-5-5 5 5-5 5"/>
+            <path d="M5 12h14m-5-5 5 5-5 5" />
         </symbol>
         <symbol id="icon-folder" viewBox="0 0 24 24">
-            <path d="M3 6.5h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11Z"/>
+            <path d="M3 6.5h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11Z" />
         </symbol>
         <symbol id="icon-device" viewBox="0 0 24 24">
-            <rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M10 18.5h4"/>
+            <rect x="5" y="2.5" width="14" height="19" rx="2" />
+            <path d="M10 18.5h4" />
         </symbol>
         <symbol id="icon-refresh" viewBox="0 0 24 24">
-            <path d="M20 7v5h-5M4 17v-5h5m10.1 0A7.2 7.2 0 0 0 6.7 7.1L4 12m16 0-2.7 4.9A7.2 7.2 0 0 1 4.9 12"/>
+            <path d="M20 7v5h-5M4 17v-5h5m10.1 0A7.2 7.2 0 0 0 6.7 7.1L4 12m16 0-2.7 4.9A7.2 7.2 0 0 1 4.9 12" />
         </symbol>
         <symbol id="icon-trash" viewBox="0 0 24 24">
-            <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>
+            <path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" />
         </symbol>
         <symbol id="icon-play" viewBox="0 0 24 24">
-            <path d="m8 5 11 7-11 7V5Z"/>
+            <path d="m8 5 11 7-11 7V5Z" />
         </symbol>
         <symbol id="icon-chevron" viewBox="0 0 24 24">
-            <path d="m9 6 6 6-6 6"/>
+            <path d="m9 6 6 6-6 6" />
         </symbol>
     </svg>
 
     <header class="site-header">
         <div class="nav-shell">
             <a class="brand" href="#top" aria-label="ADBPureFlow home">
-                <span class="brand-mark" aria-hidden="true">A</span>
+                <span class="brand-mark" aria-hidden="true">└[•-•]┘</span>
                 <span>ADBPureFlow</span>
             </a>
 
@@ -77,13 +85,20 @@
             </nav>
 
             <div class="nav-actions">
-                <a class="icon-link github-link" href="https://github.com/flessan/AdbPureFlow" aria-label="View ADBPureFlow on GitHub">
-                    <svg aria-hidden="true"><use href="#icon-github"/></svg>
+                <a class="icon-link github-link" href="https://github.com/flessan/AdbPureFlow"
+                    aria-label="View ADBPureFlow on GitHub">
+                    <svg aria-hidden="true">
+                        <use href="#icon-github" />
+                    </svg>
                     <span>GitHub</span>
                 </a>
                 <button class="theme-toggle" id="themeToggle" type="button" aria-label="Use dark theme">
-                    <svg class="sun-icon" aria-hidden="true"><use href="#icon-sun"/></svg>
-                    <svg class="moon-icon" aria-hidden="true"><use href="#icon-moon"/></svg>
+                    <svg class="sun-icon" aria-hidden="true">
+                        <use href="#icon-sun" />
+                    </svg>
+                    <svg class="moon-icon" aria-hidden="true">
+                        <use href="#icon-moon" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -95,14 +110,19 @@
                 <div class="hero-copy">
                     <p class="eyebrow">Open-source Android utility</p>
                     <h1 id="hero-title">ADBPureFlow</h1>
-                    <p class="hero-description">Install and launch APKs, target connected devices, remove packages, and start scrcpy mirroring from one focused desktop tool.</p>
+                    <p class="hero-description">Install and launch APKs, target connected devices, remove packages, and
+                        start scrcpy mirroring from one focused desktop tool.</p>
                     <div class="hero-actions">
                         <a class="button button-primary" id="heroDownload" href="#download">
-                            <svg aria-hidden="true"><use href="#icon-download"/></svg>
+                            <svg aria-hidden="true">
+                                <use href="#icon-download" />
+                            </svg>
                             <span id="heroDownloadLabel">Download ADBPureFlow</span>
                         </a>
                         <a class="button button-secondary" href="https://github.com/flessan/AdbPureFlow">
-                            <svg aria-hidden="true"><use href="#icon-github"/></svg>
+                            <svg aria-hidden="true">
+                                <use href="#icon-github" />
+                            </svg>
                             View on GitHub
                         </a>
                     </div>
@@ -122,7 +142,8 @@
                         <p class="eyebrow">The current desktop app</p>
                         <h2 id="product-title">The device workflow, in one window.</h2>
                     </div>
-                    <p>Choose a target, run the action you need, and keep the operation log in view. The interface stays out of the way.</p>
+                    <p>Choose a target, run the action you need, and keep the operation log in view. The interface stays
+                        out of the way.</p>
                 </div>
 
                 <figure class="product-figure">
@@ -147,14 +168,24 @@
                                     </div>
                                 </div>
                                 <div class="app-toolbar">
-                                    <span class="mock-tool"><svg><use href="#icon-folder"/></svg><span>Open APK</span></span>
+                                    <span class="mock-tool"><svg>
+                                            <use href="#icon-folder" />
+                                        </svg><span>Open APK</span></span>
                                     <i></i>
-                                    <span class="mock-tool"><svg><use href="#icon-device"/></svg><span>Devices</span></span>
-                                    <span class="mock-tool"><svg><use href="#icon-trash"/></svg><span>Uninstall</span></span>
+                                    <span class="mock-tool"><svg>
+                                            <use href="#icon-device" />
+                                        </svg><span>Devices</span></span>
+                                    <span class="mock-tool"><svg>
+                                            <use href="#icon-trash" />
+                                        </svg><span>Uninstall</span></span>
                                     <i></i>
-                                    <span class="mock-tool mock-tool-active"><svg><use href="#icon-play"/></svg><span>Mirror</span></span>
+                                    <span class="mock-tool mock-tool-active"><svg>
+                                            <use href="#icon-play" />
+                                        </svg><span>Mirror</span></span>
                                     <b></b>
-                                    <span class="mock-tool"><svg><use href="#icon-refresh"/></svg><span>Clear</span></span>
+                                    <span class="mock-tool"><svg>
+                                            <use href="#icon-refresh" />
+                                        </svg><span>Clear</span></span>
                                 </div>
                                 <div class="app-divider"></div>
                                 <div class="log-panel">
@@ -163,7 +194,8 @@
                                     <p><time>10:42:08</time> Found 1 device(s).</p>
                                     <p><time>10:42:08</time> Target -&gt; Pixel 7 (R3CN30A1X)</p>
                                     <p><time>10:42:16</time> Processing: sample-debug.apk</p>
-                                    <p class="log-success"><time>10:42:20</time> Success! Installed &amp; Launched: dev.sample.app</p>
+                                    <p class="log-success"><time>10:42:20</time> Success! Installed &amp; Launched:
+                                        dev.sample.app</p>
                                     <p><time>10:42:24</time> Preparing Scrcpy Engine...</p>
                                     <p class="log-success"><time>10:42:25</time> Scrcpy launched successfully.</p>
                                 </div>
@@ -174,7 +206,8 @@
                             </div>
                         </div>
                     </div>
-                    <figcaption>Faithful browser mockup based on the current Fyne GUI and its implemented actions.</figcaption>
+                    <figcaption>Faithful browser mockup based on the current Fyne GUI and its implemented actions.
+                    </figcaption>
                 </figure>
 
                 <ul class="showcase-notes">
@@ -190,39 +223,46 @@
                 <div class="section-heading reading-width">
                     <p class="eyebrow">What it does</p>
                     <h2 id="features-title">A practical layer over everyday ADB work.</h2>
-                    <p>A device-centric desktop app for connected Android devices, APK workflows, logs, deploy flows, and scrcpy-powered mirroring.</p>
+                    <p>A device-centric desktop app for connected Android devices, APK workflows, logs, deploy flows,
+                        and scrcpy-powered mirroring.</p>
                 </div>
 
                 <div class="feature-list">
                     <article class="feature-row">
                         <span class="feature-index">01</span>
                         <h3>Connected device management</h3>
-                        <p>Scans <code>adb devices -l</code>, shows the model and serial, and lets you direct each GUI action to a specific device.</p>
+                        <p>Scans <code>adb devices -l</code>, shows the model and serial, and lets you direct each GUI
+                            action to a specific device.</p>
                     </article>
                     <article class="feature-row">
                         <span class="feature-index">02</span>
                         <h3>APK installation and launch</h3>
-                        <p>Open or drop an APK to inspect metadata, install to the selected device, optionally clear data, and launch when the package ID is known.</p>
+                        <p>Open or drop an APK to inspect metadata, install to the selected device, optionally clear
+                            data, and launch when the package ID is known.</p>
                     </article>
                     <article class="feature-row">
                         <span class="feature-index">03</span>
                         <h3>Screen mirroring</h3>
-                        <p>Starts scrcpy for the selected device in its own always-on-top window. If the local engine is missing, the app can download the supported build.</p>
+                        <p>Starts scrcpy for the selected device in its own always-on-top window. If the local engine is
+                            missing, the app can download the supported build.</p>
                     </article>
                     <article class="feature-row">
                         <span class="feature-index">04</span>
                         <h3>Package management</h3>
-                        <p>Remove an application by package ID from the selected device and see the result directly in the operation log.</p>
+                        <p>Remove an application by package ID from the selected device and see the result directly in
+                            the operation log.</p>
                     </article>
                     <article class="feature-row">
                         <span class="feature-index">05</span>
                         <h3>Automatic tool setup</h3>
-                        <p>Uses an existing ADB installation when available or provisions Android platform tools locally, with guarded ZIP and TAR extraction.</p>
+                        <p>Uses an existing ADB installation when available or provisions Android platform tools
+                            locally, with guarded ZIP and TAR extraction.</p>
                     </article>
                     <article class="feature-row">
                         <span class="feature-index">06</span>
                         <h3>Cross-platform GUI and CLI</h3>
-                        <p>Use the desktop interface or the direct console workflow on Windows, Linux, and macOS. Release builds are published for 64-bit systems.</p>
+                        <p>Use the desktop interface or the direct console workflow on Windows, Linux, and macOS.
+                            Release builds are published for 64-bit systems.</p>
                     </article>
                 </div>
             </div>
@@ -246,14 +286,19 @@
                     <article class="download-row" data-platform="windows">
                         <div class="platform-name">
                             <span class="platform-monogram" aria-hidden="true">W</span>
-                            <div><h3>Windows</h3><p>64-bit</p></div>
+                            <div>
+                                <h3>Windows</h3>
+                                <p>64-bit</p>
+                            </div>
                             <span class="detected-label">Detected</span>
                         </div>
                         <div class="platform-downloads">
-                            <a class="download-link download-link-primary" data-download="windows-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link download-link-primary" data-download="windows-gui"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>GUI</span><small data-file-meta>View release</small>
                             </a>
-                            <a class="download-link" data-download="windows-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link" data-download="windows-cli"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>CLI</span><small data-file-meta>View release</small>
                             </a>
                         </div>
@@ -261,14 +306,19 @@
                     <article class="download-row" data-platform="linux">
                         <div class="platform-name">
                             <span class="platform-monogram" aria-hidden="true">L</span>
-                            <div><h3>Linux</h3><p>64-bit</p></div>
+                            <div>
+                                <h3>Linux</h3>
+                                <p>64-bit</p>
+                            </div>
                             <span class="detected-label">Detected</span>
                         </div>
                         <div class="platform-downloads">
-                            <a class="download-link download-link-primary" data-download="linux-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link download-link-primary" data-download="linux-gui"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>GUI</span><small data-file-meta>View release</small>
                             </a>
-                            <a class="download-link" data-download="linux-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link" data-download="linux-cli"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>CLI</span><small data-file-meta>View release</small>
                             </a>
                         </div>
@@ -276,14 +326,19 @@
                     <article class="download-row" data-platform="macos">
                         <div class="platform-name">
                             <span class="platform-monogram" aria-hidden="true">M</span>
-                            <div><h3>macOS</h3><p>Intel 64-bit</p></div>
+                            <div>
+                                <h3>macOS</h3>
+                                <p>Intel 64-bit</p>
+                            </div>
                             <span class="detected-label">Detected</span>
                         </div>
                         <div class="platform-downloads">
-                            <a class="download-link download-link-primary" data-download="macos-gui" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link download-link-primary" data-download="macos-gui"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>GUI</span><small data-file-meta>View release</small>
                             </a>
-                            <a class="download-link" data-download="macos-cli" href="https://github.com/flessan/AdbPureFlow/releases/latest">
+                            <a class="download-link" data-download="macos-cli"
+                                href="https://github.com/flessan/AdbPureFlow/releases/latest">
                                 <span>CLI</span><small data-file-meta>View release</small>
                             </a>
                         </div>
@@ -291,8 +346,12 @@
                 </div>
 
                 <div class="download-footnote">
-                    <p>On Linux and macOS, make the downloaded file executable with <code>chmod +x adbpureflow-*</code>.</p>
-                    <a id="releaseLink" href="https://github.com/flessan/AdbPureFlow/releases/latest">Release notes <svg aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+                    <p>On Linux and macOS, make the downloaded file executable with <code>chmod +x adbpureflow-*</code>.
+                    </p>
+                    <a id="releaseLink" href="https://github.com/flessan/AdbPureFlow/releases/latest">Release notes <svg
+                            aria-hidden="true">
+                            <use href="#icon-arrow" />
+                        </svg></a>
                 </div>
             </div>
         </section>
@@ -302,26 +361,36 @@
                 <div class="section-heading">
                     <p class="eyebrow">Open source</p>
                     <h2 id="open-source-title">Built in public, useful by design.</h2>
-                    <p>ADBPureFlow is written in Go, uses Fyne for its desktop interface, and is released under the GNU GPL v3. Read the source, report a problem, or contribute a focused improvement.</p>
-                    <p class="stack-line">Go <span>·</span> Fyne <span>·</span> Android platform tools <span>·</span> scrcpy</p>
+                    <p>ADBPureFlow is written in Go, uses Fyne for its desktop interface, and is released under the GNU
+                        GPL v3. Read the source, report a problem, or contribute a focused improvement.</p>
+                    <p class="stack-line">Go <span>·</span> Fyne <span>·</span> Android platform tools <span>·</span>
+                        scrcpy</p>
                 </div>
 
                 <nav class="project-links" aria-label="Open-source project links">
                     <a href="https://github.com/flessan/AdbPureFlow">
                         <span><strong>Repository</strong><small>Source and documentation</small></span>
-                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                        <svg aria-hidden="true">
+                            <use href="#icon-chevron" />
+                        </svg>
                     </a>
                     <a href="https://github.com/flessan/AdbPureFlow/releases">
                         <span><strong>Releases</strong><small>Published builds and notes</small></span>
-                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                        <svg aria-hidden="true">
+                            <use href="#icon-chevron" />
+                        </svg>
                     </a>
                     <a href="https://github.com/flessan/AdbPureFlow/issues">
                         <span><strong>Issues</strong><small>Bugs and feature requests</small></span>
-                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                        <svg aria-hidden="true">
+                            <use href="#icon-chevron" />
+                        </svg>
                     </a>
                     <a href="https://github.com/flessan/AdbPureFlow/graphs/contributors">
                         <span><strong>Contributors</strong><small>People behind the project</small></span>
-                        <svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+                        <svg aria-hidden="true">
+                            <use href="#icon-chevron" />
+                        </svg>
                     </a>
                 </nav>
             </div>
@@ -330,9 +399,12 @@
 
     <footer class="site-footer">
         <div class="content-shell footer-layout">
-            <p><strong>ADBPureFlow</strong> — simple tool, serious utility.</p>
-            <p>Maintained by <a href="https://github.com/flessan">Flessan</a> · <a href="https://github.com/flessan/AdbPureFlow/blob/main/LICENSE">GPL-3.0</a> · <span id="currentYear">2026</span></p>
+            <p><strong>ADBPureFlow</strong> - simple tool, serious utility.</p>
+            <p>Maintained by <a href="https://github.com/flessan">Flessan</a> · <a
+                    href="https://github.com/flessan/AdbPureFlow/blob/main/LICENSE">GPL-3.0</a> · <span
+                    id="currentYear">2026</span></p>
         </div>
     </footer>
 </body>
+
 </html>

@@ -344,8 +344,8 @@ h3 {
     line-height: 1.35;
 }
 
-.section-heading > p:not(.eyebrow),
-.section-heading-split > p {
+.section-heading>p:not(.eyebrow),
+.section-heading-split>p {
     margin: 24px 0 0;
     color: var(--text-soft);
     font-size: 17px;
@@ -359,7 +359,7 @@ h3 {
     gap: 72px;
 }
 
-.section-heading-split > p {
+.section-heading-split>p {
     margin: 0 0 3px;
     font-size: 15px;
 }
@@ -588,14 +588,14 @@ h3 {
     padding: 5px 2px 8px;
 }
 
-.app-toolbar > i {
+.app-toolbar>i {
     width: 1px;
     height: 27px;
     margin-inline: 4px;
     background: #43454b;
 }
 
-.app-toolbar > b {
+.app-toolbar>b {
     flex: 1;
 }
 
@@ -671,7 +671,7 @@ h3 {
     font-size: 10px;
 }
 
-.app-footer > span:first-child {
+.app-footer>span:first-child {
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -719,7 +719,7 @@ h3 {
     padding-right: 0;
 }
 
-.showcase-notes li + li {
+.showcase-notes li+li {
     border-left: 1px solid var(--border);
 }
 
@@ -974,7 +974,7 @@ code {
     gap: 110px;
 }
 
-.open-source-layout .section-heading > p:not(.eyebrow) {
+.open-source-layout .section-heading>p:not(.eyebrow) {
     max-width: 610px;
     font-size: 15px;
 }
@@ -1012,7 +1012,7 @@ code {
     background: var(--surface);
 }
 
-.project-links a > span {
+.project-links a>span {
     display: flex;
     flex-direction: column;
 }
@@ -1083,7 +1083,7 @@ code {
         gap: 24px;
     }
 
-    .section-heading-split > p {
+    .section-heading-split>p {
         max-width: 650px;
     }
 
@@ -1106,6 +1106,7 @@ code {
 }
 
 @media (max-width: 680px) {
+
     .content-shell,
     .nav-shell {
         width: min(calc(100% - 32px), var(--max-width));
@@ -1190,11 +1191,11 @@ code {
         padding-inline: 8px;
     }
 
-    .mock-tool > span {
+    .mock-tool>span {
         display: none;
     }
 
-    .app-toolbar > i {
+    .app-toolbar>i {
         margin-inline: 2px;
     }
 
@@ -1216,7 +1217,7 @@ code {
         padding: 17px 0;
     }
 
-    .showcase-notes li + li {
+    .showcase-notes li+li {
         border-top: 1px solid var(--border);
         border-left: 0;
     }
