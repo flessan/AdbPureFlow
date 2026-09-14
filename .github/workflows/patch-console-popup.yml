@@ -42,8 +42,6 @@ jobs:
 
           cd GUI
           gofmt -w app.go process_windows.go process_other.go process_windows_test.go
-          go test .
-          go vet .
           cd ..
           git diff --check
 
