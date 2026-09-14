@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   windows-gui-and-cli:
@@ -27,87 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Apply Windows console popup fix
-        shell: pwsh
-        run: |
-          $app = "GUI\app.go"
-          $text = Get-Content -Raw -Encoding UTF8 $app
-          $needle = 'cmd := exec.CommandContext(ctx, executable, args...)'
-          $count = ([regex]::Matches($text, [regex]::Escape($needle))).Count
-          if ($count -ne 3) {
-            throw "Expected 3 OSRunner command sites, found $count"
-          }
-
-          $replacement = $needle + "`r`n`tconfigureCommand(cmd)"
-          $offset = 0
-          for ($i = 0; $i -lt 3; $i++) {
-            $index = $text.IndexOf($needle, $offset, [StringComparison]::Ordinal)
-            if ($index -lt 0) { throw "Could not locate OSRunner command site $($i + 1)" }
-            $text = $text.Substring(0, $index) + $replacement + $text.Substring($index + $needle.Length)
-            $offset = $index + $replacement.Length
-          }
-
-          $capture = 'cmd := exec.CommandContext(ctx, adb, "-s", serial, "exec-out", "screencap", "-p")'
-          $captureIndex = $text.IndexOf($capture, [StringComparison]::Ordinal)
-          if ($captureIndex -lt 0) { throw "CaptureScreenshot command not found" }
-          if ($text.IndexOf("configureCommand(cmd)", $captureIndex, [StringComparison]::Ordinal) -lt 0) {
-            $captureReplacement = $capture + "`r`n`tconfigureCommand(cmd)"
-            $text = $text.Substring(0, $captureIndex) + $captureReplacement + $text.Substring($captureIndex + $capture.Length)
-          }
-          Set-Content -Path $app -Value $text -Encoding UTF8 -NoNewline
-
-          @'
-          //go:build windows
-
-          package main
-
-          import (
-          	"os/exec"
-          	"syscall"
-          )
-
-          // configureCommand prevents console-based helper processes such as adb.exe
-          // from flashing a transient console window when launched by the GUI app.
-          func configureCommand(cmd *exec.Cmd) {
-          	if cmd == nil {
-          		return
-          	}
-          	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-          }
-          '@ | Set-Content -Path "GUI\process_windows.go" -Encoding UTF8 -NoNewline
-
-          @'
-          //go:build !windows
-
-          package main
-
-          import "os/exec"
-
-          func configureCommand(cmd *exec.Cmd) {}
-          '@ | Set-Content -Path "GUI\process_other.go" -Encoding UTF8 -NoNewline
-
-          @'
-          //go:build windows
-
-          package main
-
-          import (
-          	"os/exec"
-          	"testing"
-          )
-
-          func TestConfigureCommandHidesWindowsWindow(t *testing.T) {
-          	cmd := exec.Command("cmd.exe", "/c", "exit", "0")
-          	configureCommand(cmd)
-          	if cmd.SysProcAttr == nil {
-          		t.Fatal("expected Windows process attributes")
-          	}
-          	if !cmd.SysProcAttr.HideWindow {
-          		t.Fatal("expected child console window to be hidden")
-          	}
-          }
-          '@ | Set-Content -Path "GUI\process_windows_test.go" -Encoding UTF8 -NoNewline
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -152,14 +71,13 @@ jobs:
         run: |
           $files = @(Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go | ForEach-Object { $_.FullName })
           if ($files.Count -eq 0) { exit 0 }
-          $before = git diff --binary -- $files
-          gofmt -w $files
-          $after = git diff --binary -- $files
-          if ($before -ne $after) {
+          $diff = gofmt -d $files
+          if (-not [string]::IsNullOrWhiteSpace(($diff -join "`n"))) {
             Write-Error "Go files are not gofmt-clean:"
-            git diff -- $files
+            $diff
             exit 1
           }
+          Write-Host "All Go files are gofmt-clean."
 
       - name: Test GUI
         shell: pwsh
@@ -205,23 +123,18 @@ jobs:
           if (-not (Test-Path $exe)) { throw "Missing executable: $exe" }
           if (-not (Test-Path $checksums)) { throw "Missing checksum file: $checksums" }
           if (-not (Test-Path $readme)) { throw "Missing Windows readme: $readme" }
-          $expected = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          $checksumLine = Get-Content $checksums | Select-String -SimpleMatch (Split-Path $exe -Leaf) | Select-Object -First 1
-          if (-not $checksumLine) { throw "No checksum entry found for $exe" }
-          $actual = $checksumLine.ToString().Trim().Split([char[]]@(' ', "`t"), [System.StringSplitOptions]::RemoveEmptyEntries)[0].ToLowerInvariant()
-          if ($expected -ne $actual) { throw "Checksum mismatch for $exe" }
 
-      - name: Commit source fix and remove temporary workflow
-        shell: pwsh
-        run: |
-          $status = git status --porcelain
-          if ([string]::IsNullOrWhiteSpace($status)) { exit 0 }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add GUI\app.go GUI\process_windows.go GUI\process_other.go GUI\process_windows_test.go
-          if (Test-Path ".github\workflows\apply-console-popup-fix.yml") { git rm ".github\workflows\apply-console-popup-fix.yml" }
-          git commit -m "Fix Windows console popup from helper processes"
-          git push origin HEAD:main
+          $expected = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksumLine = Get-Content $checksums |
+            Select-String -SimpleMatch (Split-Path $exe -Leaf) |
+            Select-Object -First 1
+          if (-not $checksumLine) { throw "No checksum entry found for $exe" }
+
+          $actual = $checksumLine.ToString().Trim().Split(
+            [char[]]@(' ', "`t"),
+            [System.StringSplitOptions]::RemoveEmptyEntries
+          )[0].ToLowerInvariant()
+          if ($expected -ne $actual) { throw "Checksum mismatch for $exe" }
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
