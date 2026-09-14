@@ -294,6 +294,7 @@ type OSRunner struct{}
 func (OSRunner) Run(ctx context.Context, executable string, args ...string) (CommandResult, error) {
 	started := time.Now()
 	cmd := exec.CommandContext(ctx, executable, args...)
+	configureCommand(cmd)
 	var out, stderr bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
@@ -310,6 +311,7 @@ func (OSRunner) Run(ctx context.Context, executable string, args ...string) (Com
 
 func (OSRunner) Start(ctx context.Context, executable string, args ...string) (*ManagedProcess, error) {
 	cmd := exec.CommandContext(ctx, executable, args...)
+	configureCommand(cmd)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	if err := cmd.Start(); err != nil {
@@ -329,6 +331,7 @@ func (OSRunner) Start(ctx context.Context, executable string, args ...string) (*
 func (OSRunner) Stream(ctx context.Context, executable string, args []string, onLine func(string)) (CommandResult, error) {
 	started := time.Now()
 	cmd := exec.CommandContext(ctx, executable, args...)
+	configureCommand(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return CommandResult{}, err
@@ -990,6 +993,7 @@ func (a *ADB) CaptureScreenshot(ctx context.Context, serial, outputPath string) 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, adb, "-s", serial, "exec-out", "screencap", "-p")
+	configureCommand(cmd)
 	data, err := cmd.Output()
 	if err != nil {
 		return err
