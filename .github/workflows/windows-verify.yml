@@ -35,8 +35,8 @@ jobs:
           $text = Get-Content -Raw -Encoding UTF8 $app
           $needle = 'cmd := exec.CommandContext(ctx, executable, args...)'
           $count = ([regex]::Matches($text, [regex]::Escape($needle))).Count
-          if ($count -ne 4) {
-            throw "Expected 4 command sites in OSRunner/CaptureScreenshot, found $count"
+          if ($count -ne 3) {
+            throw "Expected 3 OSRunner command sites, found $count"
           }
 
           $replacement = $needle + "`r`n`tconfigureCommand(cmd)"
@@ -48,12 +48,13 @@ jobs:
             $offset = $index + $replacement.Length
           }
 
-          $marker = 'func (a *ADB) CaptureScreenshot('
-          $start = $text.IndexOf($marker, [StringComparison]::Ordinal)
-          if ($start -lt 0) { throw "CaptureScreenshot not found" }
-          $index = $text.IndexOf($needle, $start, [StringComparison]::Ordinal)
-          if ($index -lt 0) { throw "CaptureScreenshot command not found" }
-          $text = $text.Substring(0, $index) + $replacement + $text.Substring($index + $needle.Length)
+          $capture = 'cmd := exec.CommandContext(ctx, adb, "-s", serial, "exec-out", "screencap", "-p")'
+          $captureIndex = $text.IndexOf($capture, [StringComparison]::Ordinal)
+          if ($captureIndex -lt 0) { throw "CaptureScreenshot command not found" }
+          if ($text.IndexOf("configureCommand(cmd)", $captureIndex, [StringComparison]::Ordinal) -lt 0) {
+            $captureReplacement = $capture + "`r`n`tconfigureCommand(cmd)"
+            $text = $text.Substring(0, $captureIndex) + $captureReplacement + $text.Substring($captureIndex + $capture.Length)
+          }
           Set-Content -Path $app -Value $text -Encoding UTF8 -NoNewline
 
           @'
@@ -136,92 +137,57 @@ jobs:
         shell: pwsh
         run: |
           Push-Location GUI
-          try {
-            go mod download
-          }
-          finally {
-            Pop-Location
-          }
+          try { go mod download }
+          finally { Pop-Location }
 
       - name: Download CLI modules
         shell: pwsh
         run: |
           Push-Location CLI
-          try {
-            go mod download
-          }
-          finally {
-            Pop-Location
-          }
+          try { go mod download }
+          finally { Pop-Location }
 
       - name: Check Go formatting
         shell: pwsh
         run: |
-          $files = @(
-            Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go |
-              ForEach-Object { $_.FullName }
-          )
-
-          if ($files.Count -eq 0) {
-            Write-Host "No Go files found."
-            exit 0
-          }
-
+          $files = @(Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go | ForEach-Object { $_.FullName })
+          if ($files.Count -eq 0) { exit 0 }
           $before = git diff --binary -- $files
           gofmt -w $files
           $after = git diff --binary -- $files
-
           if ($before -ne $after) {
             Write-Error "Go files are not gofmt-clean:"
             git diff -- $files
             exit 1
           }
 
-          Write-Host "All Go files are gofmt-clean."
-
       - name: Test GUI
         shell: pwsh
         run: |
           Push-Location GUI
-          try {
-            go test -v ./...
-          }
-          finally {
-            Pop-Location
-          }
+          try { go test -v ./... }
+          finally { Pop-Location }
 
       - name: Test CLI
         shell: pwsh
         run: |
           Push-Location CLI
-          try {
-            go test -v ./...
-          }
-          finally {
-            Pop-Location
-          }
+          try { go test -v ./... }
+          finally { Pop-Location }
 
       - name: Vet GUI
         shell: pwsh
         run: |
           Push-Location GUI
-          try {
-            go vet ./...
-          }
-          finally {
-            Pop-Location
-          }
+          try { go vet ./... }
+          finally { Pop-Location }
 
       - name: Vet CLI
         shell: pwsh
         run: |
           Push-Location CLI
-          try {
-            go vet ./...
-          }
-          finally {
-            Pop-Location
-          }
+          try { go vet ./... }
+          finally { Pop-Location }
 
       - name: Build Windows executable and checksum
         shell: pwsh
@@ -236,38 +202,24 @@ jobs:
           $exe = "dist\AdbPureFlow-$env:VERSION-windows-amd64.exe"
           $checksums = "dist\checksums-$env:VERSION.txt"
           $readme = "dist\README-WINDOWS.txt"
-
           if (-not (Test-Path $exe)) { throw "Missing executable: $exe" }
           if (-not (Test-Path $checksums)) { throw "Missing checksum file: $checksums" }
           if (-not (Test-Path $readme)) { throw "Missing Windows readme: $readme" }
-
           $expected = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          $checksumLine = Get-Content $checksums |
-            Select-String -SimpleMatch (Split-Path $exe -Leaf) |
-            Select-Object -First 1
+          $checksumLine = Get-Content $checksums | Select-String -SimpleMatch (Split-Path $exe -Leaf) | Select-Object -First 1
           if (-not $checksumLine) { throw "No checksum entry found for $exe" }
-
-          $actual = $checksumLine.ToString().Trim().Split(
-            [char[]]@(' ', "`t"),
-            [System.StringSplitOptions]::RemoveEmptyEntries
-          )[0].ToLowerInvariant()
+          $actual = $checksumLine.ToString().Trim().Split([char[]]@(' ', "`t"), [System.StringSplitOptions]::RemoveEmptyEntries)[0].ToLowerInvariant()
           if ($expected -ne $actual) { throw "Checksum mismatch for $exe" }
 
       - name: Commit source fix and remove temporary workflow
         shell: pwsh
         run: |
           $status = git status --porcelain
-          if ([string]::IsNullOrWhiteSpace($status)) {
-            Write-Host "No source changes to commit."
-            exit 0
-          }
-
+          if ([string]::IsNullOrWhiteSpace($status)) { exit 0 }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add GUI\app.go GUI\process_windows.go GUI\process_other.go GUI\process_windows_test.go
-          if (Test-Path ".github\workflows\apply-console-popup-fix.yml") {
-            git rm ".github\workflows\apply-console-popup-fix.yml"
-          }
+          if (Test-Path ".github\workflows\apply-console-popup-fix.yml") { git rm ".github\workflows\apply-console-popup-fix.yml" }
           git commit -m "Fix Windows console popup from helper processes"
           git push origin HEAD:main
 
