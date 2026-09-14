@@ -74,17 +74,32 @@ jobs:
             Pop-Location
           }
 
-      - name: Check Go formatting
+            - name: Check Go formatting
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go |
-            ForEach-Object { $_.FullName }
+          $files = @(
+            Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go |
+              ForEach-Object { $_.FullName }
+          )
 
-          $unformatted = @(gofmt -l $files)
-
-          if ($unformatted.Count -gt 0) {
-            Write-Error "Go files need formatting:`n$($unformatted -join "`n")"
+          if ($files.Count -eq 0) {
+            Write-Host "No Go files found."
+            exit 0
           }
+
+          $before = git diff --binary -- $files
+
+          gofmt -w $files
+
+          $after = git diff --binary -- $files
+
+          if ($before -ne $after) {
+            Write-Error "Go files are not gofmt-clean:"
+            git diff -- $files
+            exit 1
+          }
+
+          Write-Host "All Go files are gofmt-clean."
 
       - name: Test GUI
         shell: pwsh
