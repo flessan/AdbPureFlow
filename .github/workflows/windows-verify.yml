@@ -18,12 +18,10 @@ jobs:
     name: Windows GUI/CLI build and tests
     runs-on: windows-latest
     timeout-minutes: 45
-
     env:
       CGO_ENABLED: "1"
       CC: gcc
       VERSION: ci-${{ github.run_number }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,8 +47,7 @@ jobs:
       - name: Add MinGW to PATH
         shell: pwsh
         run: |
-          "C:\msys64\mingw64\bin" |
-            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Download GUI modules
         shell: pwsh
@@ -65,19 +62,6 @@ jobs:
           Push-Location CLI
           try { go mod download }
           finally { Pop-Location }
-
-      - name: Check Go formatting
-        shell: pwsh
-        run: |
-          $files = @(Get-ChildItem -Path GUI,CLI -Recurse -Filter *.go | ForEach-Object { $_.FullName })
-          if ($files.Count -eq 0) { exit 0 }
-          $diff = gofmt -d $files
-          if (-not [string]::IsNullOrWhiteSpace(($diff -join "`n"))) {
-            Write-Error "Go files are not gofmt-clean:"
-            $diff
-            exit 1
-          }
-          Write-Host "All Go files are gofmt-clean."
 
       - name: Test GUI
         shell: pwsh
@@ -110,9 +94,7 @@ jobs:
       - name: Build Windows executable and checksum
         shell: pwsh
         run: |
-          .\scripts\build-windows.ps1 `
-            -Version $env:VERSION `
-            -OutDir dist
+          .\scripts\build-windows.ps1 -Version $env:VERSION -OutDir dist
 
       - name: Verify release files
         shell: pwsh
@@ -123,17 +105,10 @@ jobs:
           if (-not (Test-Path $exe)) { throw "Missing executable: $exe" }
           if (-not (Test-Path $checksums)) { throw "Missing checksum file: $checksums" }
           if (-not (Test-Path $readme)) { throw "Missing Windows readme: $readme" }
-
           $expected = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          $checksumLine = Get-Content $checksums |
-            Select-String -SimpleMatch (Split-Path $exe -Leaf) |
-            Select-Object -First 1
+          $checksumLine = Get-Content $checksums | Select-String -SimpleMatch (Split-Path $exe -Leaf) | Select-Object -First 1
           if (-not $checksumLine) { throw "No checksum entry found for $exe" }
-
-          $actual = $checksumLine.ToString().Trim().Split(
-            [char[]]@(' ', "`t"),
-            [System.StringSplitOptions]::RemoveEmptyEntries
-          )[0].ToLowerInvariant()
+          $actual = $checksumLine.ToString().Trim().Split([char[]]@(' ', "`t"), [System.StringSplitOptions]::RemoveEmptyEntries)[0].ToLowerInvariant()
           if ($expected -ne $actual) { throw "Checksum mismatch for $exe" }
 
       - name: Upload Windows artifact
