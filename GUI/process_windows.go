@@ -2,7 +2,10 @@
 
 package main
 
-import "os/exec"
+import (
+	"os/exec"
+	"syscall"
+)
 
 // configureCommand prevents console-based helper processes such as adb.exe
 // from flashing a transient console window when launched by the GUI app.
