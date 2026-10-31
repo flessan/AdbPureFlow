@@ -45,3 +45,29 @@ func (l insetLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 func withPadding(object fyne.CanvasObject, horizontal, vertical float32) fyne.CanvasObject {
 	return container.New(insetLayout{horizontal: horizontal, vertical: vertical}, object)
 }
+
+
+// fixedWidthLayout reserves a stable width for a child while allowing it to
+// fill the available height. This keeps a scrollable sidebar from collapsing
+// to the scroll widget's small default minimum width.
+type fixedWidthLayout struct {
+	width float32
+}
+
+func (l fixedWidthLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	if len(objects) == 0 || objects[0] == nil {
+		return
+	}
+
+	objects[0].Move(fyne.NewPos(0, 0))
+	objects[0].Resize(fyne.NewSize(l.width, size.Height))
+}
+
+func (l fixedWidthLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	if len(objects) == 0 || objects[0] == nil {
+		return fyne.NewSize(l.width, 0)
+	}
+
+	minimum := objects[0].MinSize()
+	return fyne.NewSize(l.width, minimum.Height)
+}
