@@ -386,6 +386,10 @@ func shortenText(value string, limit int) string {
 	return string(runes[:limit-1]) + "…"
 }
 
+func wrapActions(objects ...fyne.CanvasObject) fyne.CanvasObject {
+	return container.NewGridWrap(fyne.NewSize(208, 40), objects...)
+}
+
 func (ui *desktopUI) selectedDevice() (Device, bool) {
 	for _, d := range ui.devices {
 		if d.Serial == ui.selectedSerial {
@@ -502,7 +506,7 @@ func (ui *desktopUI) showDevices() {
 
 	if len(ui.devices) == 0 {
 		detail := widget.NewLabel("Connect your phone with a data-capable USB cable and accept the debugging prompt, or pair a device over Android 11+ Wireless debugging.")
-		actions := container.NewHBox(
+		actions := wrapActions(
 			widget.NewButtonWithIcon("Add Wireless Device", theme.ContentAddIcon(), ui.showWirelessDialog),
 			widget.NewButtonWithIcon("Refresh Devices", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
 		)
@@ -510,9 +514,9 @@ func (ui *desktopUI) showDevices() {
 	} else {
 		for _, device := range ui.devices {
 			dev := device
-			name := dev.Label()
+			name := compactDeviceLabel(dev)
 			if alias := ui.core.State().DeviceAliases[dev.Serial]; alias != "" {
-				name = alias
+				name = shortenText(alias, 32)
 			}
 			status := fmt.Sprintf("%s · %s · Android %s · Battery %s · Storage %s",
 				dev.Transport, dev.Status,
@@ -525,7 +529,7 @@ func (ui *desktopUI) showDevices() {
 			if dev.Serial == ui.selectedSerial {
 				selectText = "Currently selected"
 			}
-			actions := container.NewHBox(
+			actions := wrapActions(
 				widget.NewButton(selectText, func() {
 					ui.selectedSerial = dev.Serial
 					_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = dev.Serial })
@@ -566,7 +570,7 @@ func (ui *desktopUI) showDevices() {
 			if connected {
 				state = "Connected"
 			}
-			actions := container.NewHBox(
+			actions := wrapActions(
 				widget.NewButton("Reconnect", func() { go ui.reconnectWireless(addr) }),
 				widget.NewButton("Forget", func() { ui.forgetWireless(addr) }),
 			)
@@ -796,7 +800,7 @@ func (ui *desktopUI) showScreen() {
 	))
 	controls := widget.NewCard("Session controls", "Start, stop, record, or capture the current device screen.", container.NewVBox(
 		mirrorState,
-		container.NewHBox(start, record, stop, screenshot),
+		wrapActions(start, record, stop, screenshot),
 	))
 	ui.replaceContent("Screen", container.NewVBox(intro, target, options, controls))
 }
@@ -956,7 +960,7 @@ func (ui *desktopUI) showApps() {
 			if !app.UserApp {
 				kind = "System app"
 			}
-			actions := container.NewHBox(
+			actions := wrapActions(
 				widget.NewButton("Launch", func() { go ui.packageAction("Launch", pkg, ui.core.adb.Launch) }),
 				widget.NewButton("Force stop", func() { go ui.packageAction("Force stop", pkg, ui.core.adb.ForceStop) }),
 				widget.NewButton("Clear data", func() {
@@ -970,7 +974,10 @@ func (ui *desktopUI) showApps() {
 					ui.setStatus("Copied package name", false)
 				}),
 			)
-			listBox.Add(widget.NewCard(pkg, kind, container.NewVBox(
+			packageLabel := widget.NewLabel(pkg)
+			packageLabel.Wrapping = fyne.TextWrapBreak
+			listBox.Add(widget.NewCard(shortenText(pkg, 36), kind, container.NewVBox(
+				packageLabel,
 				widget.NewLabel(fallback(app.APKPath, "Installed package")),
 				actions,
 			)))
@@ -1010,7 +1017,7 @@ func (ui *desktopUI) showApps() {
 
 	install := widget.NewButtonWithIcon("Install APK…", theme.ContentAddIcon(), func() { ui.chooseAPK(ui.inspectAPK) })
 	refresh := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { load(showSystem.Checked) })
-	toolbar := container.NewHBox(showSystem, install, refresh, countLabel)
+	toolbar := wrapActions(showSystem, install, refresh, countLabel)
 	header := container.NewVBox(
 		widget.NewRichTextFromMarkdown("### Installed applications\nSearch packages and run actions on the selected Android device. Destructive actions ask for confirmation."),
 		filter,
@@ -1149,7 +1156,7 @@ func (ui *desktopUI) showLogs() {
 	})
 
 	filter.OnChanged = func(string) { ui.logList.Refresh() }
-	controls := container.NewHBox(start, stop, pause, clear, export)
+	controls := wrapActions(start, stop, pause, clear, export)
 	header := container.NewVBox(
 		widget.NewRichTextFromMarkdown("### Live device logs\nStream Android logcat, narrow the visible entries, then export only the entries that match your filters."),
 		filter,
@@ -1343,7 +1350,7 @@ func (ui *desktopUI) showDeploy() {
 	))
 	runCard := widget.NewCard("Deployment progress", "The flow stops when a step fails; it does not report partial success as complete.", container.NewVBox(
 		progress,
-		container.NewHBox(run, cancelButton),
+		wrapActions(run, cancelButton),
 	))
 	recentCard := widget.NewCard("Recent APKs", "Quickly reuse a previously deployed artifact.", recentContent)
 
