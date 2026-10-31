@@ -355,6 +355,15 @@ func (ui *desktopUI) syncDeviceSelect(devices []Device, preferredSerial string) 
 	return selected
 }
 
+func (ui *desktopUI) deviceOptionForSerial(serial string) string {
+	for option, mappedSerial := range ui.deviceOptionSerial {
+		if mappedSerial == serial {
+			return option
+		}
+	}
+	return ""
+}
+
 func compactDeviceLabel(device Device) string {
 	name := strings.TrimSpace(device.DisplayName)
 	if name == "" {
@@ -533,7 +542,9 @@ func (ui *desktopUI) showDevices() {
 				widget.NewButton(selectText, func() {
 					ui.selectedSerial = dev.Serial
 					_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = dev.Serial })
-					ui.deviceSelect.SetSelected(dev.Label())
+					if option := ui.deviceOptionForSerial(dev.Serial); option != "" {
+						ui.deviceSelect.SetSelected(option)
+					}
 					ui.setStatus("Selected "+dev.Label(), false)
 					ui.showDevices()
 				}),
