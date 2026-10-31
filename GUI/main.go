@@ -32,8 +32,15 @@ type desktopUI struct {
 	status          *widget.Label
 	activity        *widget.ProgressBarInfinite
 	contentTitle    *widget.Label
-	content         *fyne.Container
+	contentScroll   *container.Scroll
 	navButtons      map[string]*widget.Button
+	sidebarPane     fyne.CanvasObject
+	sidebarSlot     *fyne.Container
+	sidebarToggle   *widget.Button
+	fullscreenButton *widget.Button
+	windowSizeSelect *widget.Select
+	shell           *fyne.Container
+	windowedSize    fyne.Size
 
 	monitorCancel  context.CancelFunc
 	logCancel      context.CancelFunc
@@ -51,9 +58,9 @@ func main() {
 	core := NewApp()
 	applyTheme(fyneApp, core.State().Theme)
 	win := fyneApp.NewWindow("AdbPureFlow " + version)
-	win.Resize(fyne.NewSize(1120, 760))
+	win.Resize(fyne.NewSize(1280, 820))
 
-	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core}
+	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core, windowedSize: fyne.NewSize(1280, 820)}
 	win.SetContent(ui.buildShell())
 	ui.setupShortcuts()
 	win.SetOnClosed(func() {
@@ -87,7 +94,9 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 	ui.activity = widget.NewProgressBarInfinite()
 	ui.activity.Hide()
 	ui.contentTitle = widget.NewLabelWithStyle("Devices", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	ui.content = container.NewMax()
+	ui.contentScroll = container.NewVScroll(widget.NewLabel("Select a workspace"))
+	ui.contentScroll.Direction = container.ScrollVerticalOnly
+
 	ui.deviceSelect = widget.NewSelect([]string{"No devices"}, func(label string) {
 		for _, d := range ui.devices {
 			if label == d.Label() {
@@ -110,7 +119,24 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 		widget.NewButtonWithIcon("Add Wireless", theme.ContentAddIcon(), ui.showWirelessDialog),
 		widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
 	)
-	top := withPadding(container.NewBorder(nil, nil, brand, container.NewHBox(deviceTarget, actions), nil), 20, 12)
+
+	ui.sidebarToggle = widget.NewButtonWithIcon("Hide sidebar", theme.MenuIcon(), ui.toggleSidebar)
+	ui.windowSizeSelect = widget.NewSelect([]string{
+		"Compact · 1100 × 720",
+		"Default · 1280 × 820",
+		"Wide · 1480 × 920",
+	}, ui.setWindowSize)
+	ui.windowSizeSelect.SetSelected("Default · 1280 × 820")
+	ui.fullscreenButton = widget.NewButtonWithIcon("Full screen", theme.ViewFullScreenIcon(), ui.toggleFullscreen)
+
+	windowControls := container.NewHBox(
+		ui.sidebarToggle,
+		deviceTarget,
+		actions,
+		ui.windowSizeSelect,
+		ui.fullscreenButton,
+	)
+	top := withPadding(container.NewBorder(nil, nil, brand, windowControls, nil), 18, 10)
 
 	ui.navButtons = make(map[string]*widget.Button)
 	makeNavButton := func(name string, icon fyne.Resource, action func()) *widget.Button {
@@ -133,18 +159,21 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 		makeNavButton("Diagnostics", theme.WarningIcon(), ui.showDiagnostics),
 		makeNavButton("Help", theme.HelpIcon(), ui.showHelp),
 	)
+	sidebarScroll := container.NewVScroll(withPadding(nav, 12, 16))
+	sidebarScroll.Direction = container.ScrollVerticalOnly
+	ui.sidebarPane = container.New(fixedWidthLayout{width: 244}, sidebarScroll)
+	ui.sidebarSlot = container.NewMax(ui.sidebarPane)
 
 	center := container.NewBorder(
 		withPadding(ui.contentTitle, 22, 12),
 		nil, nil, nil,
-		ui.content,
+		ui.contentScroll,
 	)
-	sidebar := withPadding(nav, 14, 18)
 	bottom := withPadding(container.NewBorder(nil, nil, ui.status, nil, ui.activity), 20, 8)
-	shell := container.NewBorder(top, bottom, sidebar, nil, center)
+	ui.shell = container.NewBorder(top, bottom, ui.sidebarSlot, nil, center)
 
 	ui.showDevices()
-	return shell
+	return ui.shell
 }
 
 func (ui *desktopUI) setupShortcuts() {
@@ -159,6 +188,20 @@ func (ui *desktopUI) setupShortcuts() {
 			return
 		}
 		go ui.refreshDevices()
+	})
+	ui.win.Canvas().AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyB, Modifier: fyne.KeyModifierControl}, func(fyne.Shortcut) {
+		if _, editing := ui.win.Canvas().Focused().(*widget.Entry); editing {
+			return
+		}
+		ui.toggleSidebar()
+	})
+	ui.win.Canvas().AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF11}, func(fyne.Shortcut) {
+		ui.toggleFullscreen()
+	})
+	ui.win.Canvas().AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyEscape}, func(fyne.Shortcut) {
+		if ui.win.FullScreen() {
+			ui.toggleFullscreen()
+		}
 	})
 }
 
@@ -204,9 +247,70 @@ func (ui *desktopUI) replaceContent(title string, obj fyne.CanvasObject) {
 			button.Refresh()
 		}
 
-		ui.content.Objects = []fyne.CanvasObject{withPadding(obj, 22, 18)}
-		ui.content.Refresh()
+		// A single page-level scroll host keeps tall workspaces (including
+		// Screen, Deploy, Diagnostics, and Help) reachable on short windows.
+		ui.contentScroll.Content = withPadding(obj, 22, 18)
+		ui.contentScroll.ScrollToTop()
+		ui.contentScroll.Refresh()
 	})
+}
+
+func (ui *desktopUI) toggleSidebar() {
+	if ui.sidebarSlot == nil || ui.sidebarPane == nil {
+		return
+	}
+	if len(ui.sidebarSlot.Objects) > 0 {
+		ui.sidebarSlot.Objects = nil
+		ui.sidebarToggle.SetText("Show sidebar")
+	} else {
+		ui.sidebarSlot.Objects = []fyne.CanvasObject{ui.sidebarPane}
+		ui.sidebarToggle.SetText("Hide sidebar")
+	}
+	ui.sidebarSlot.Refresh()
+	if ui.shell != nil {
+		ui.shell.Refresh()
+	}
+}
+
+func (ui *desktopUI) setWindowSize(value string) {
+	var size fyne.Size
+	switch value {
+	case "Compact · 1100 × 720":
+		size = fyne.NewSize(1100, 720)
+	case "Wide · 1480 × 920":
+		size = fyne.NewSize(1480, 920)
+	default:
+		value = "Default · 1280 × 820"
+		size = fyne.NewSize(1280, 820)
+	}
+
+	if ui.win.FullScreen() {
+		ui.win.SetFullScreen(false)
+		ui.fullscreenButton.SetText("Full screen")
+		ui.windowSizeSelect.Enable()
+	}
+	ui.windowedSize = size
+	ui.win.Resize(size)
+	ui.win.CenterOnScreen()
+}
+
+func (ui *desktopUI) toggleFullscreen() {
+	if ui.win.FullScreen() {
+		ui.win.SetFullScreen(false)
+		ui.win.Resize(ui.windowedSize)
+		ui.win.CenterOnScreen()
+		ui.fullscreenButton.SetText("Full screen")
+		ui.windowSizeSelect.Enable()
+		return
+	}
+
+	current := ui.win.Canvas().Size()
+	if current.Width >= 640 && current.Height >= 480 {
+		ui.windowedSize = current
+	}
+	ui.win.SetFullScreen(true)
+	ui.fullscreenButton.SetText("Windowed")
+	ui.windowSizeSelect.Disable()
 }
 
 func (ui *desktopUI) selectedDevice() (Device, bool) {
@@ -359,8 +463,7 @@ func (ui *desktopUI) showDevices() {
 				name = alias
 			}
 			status := fmt.Sprintf("%s · %s · Android %s · Battery %s · Storage %s",
-				dev.Transport,
-				dev.Status,
+				dev.Transport, dev.Status,
 				fallback(dev.AndroidVersion, "unknown"),
 				fallback(dev.BatteryPercent, "unknown"),
 				fallback(dev.StorageSummary, "unknown"),
@@ -419,7 +522,7 @@ func (ui *desktopUI) showDevices() {
 		}
 	}
 
-	ui.replaceContent("Devices", container.NewVScroll(body))
+	ui.replaceContent("Devices", body)
 }
 
 func (ui *desktopUI) renameDevice(serial string) {
@@ -772,7 +875,7 @@ func (ui *desktopUI) showAPKInstall(meta APKMetadata) {
 			ui.showInfo("Install complete", fallback(msg, "APK installed successfully."))
 		}()
 	})
-	ui.replaceContent("Install APK", container.NewVScroll(container.NewVBox(widget.NewRichTextFromMarkdown("### APK workflow\n"+strings.Join(lines, "\n\n")), clearData, launch, install)))
+	ui.replaceContent("Install APK", container.NewVBox(widget.NewRichTextFromMarkdown("### APK workflow\n"+strings.Join(lines, "\n\n")), clearData, launch, install))
 }
 
 func (ui *desktopUI) showApps() {
@@ -861,7 +964,7 @@ func (ui *desktopUI) showApps() {
 		filter,
 		toolbar,
 	)
-	ui.replaceContent("Apps", container.NewBorder(header, nil, nil, nil, container.NewVScroll(listBox)))
+	ui.replaceContent("Apps", container.NewVBox(header, listBox))
 	load(false)
 }
 
@@ -1287,7 +1390,7 @@ func (ui *desktopUI) showSettings() {
 
 func (ui *desktopUI) showHelp() {
 	guide := widget.NewCard("Start here", "A short route through the main workspaces.", widget.NewRichTextFromMarkdown("1. **Devices:** connect by USB or Add Wireless, then select your phone.\n2. **Screen:** start scrcpy mirroring, capture a screenshot, or record a session.\n3. **Apps:** search installed packages, launch, stop, clear data, or uninstall.\n4. **Logs:** stream logcat, filter entries, and export the visible results.\n5. **Deploy:** install an APK and optionally clear, launch, mirror, or open logs."))
-	shortcuts := widget.NewCard("Keyboard shortcuts", "Use the app without leaving the keyboard.", widget.NewRichTextFromMarkdown("- **Ctrl+K** opens the command palette.\n- **Ctrl+R** refreshes connected devices."))
+	shortcuts := widget.NewCard("Keyboard shortcuts", "Use the app without leaving the keyboard.", widget.NewRichTextFromMarkdown("- **Ctrl+K** opens the command palette.\n- **Ctrl+R** refreshes connected devices.\n- **Ctrl+B** shows or hides the sidebar.\n- **F11** toggles full screen; **Esc** returns to windowed mode."))
 	recovery := widget.NewCard("When something does not work", "Start with Diagnostics before changing device settings.", widget.NewLabel("Check that USB debugging is enabled, accept the RSA prompt on the phone, and verify ADB/scrcpy in Diagnostics. Wireless pairing uses Android's pairing-code flow; QR pairing is not simulated."))
 	ui.replaceContent("Help & Tutorials", container.NewVBox(guide, shortcuts, recovery))
 }
