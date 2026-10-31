@@ -50,6 +50,7 @@ type desktopUI struct {
 	logFilter      *widget.Entry
 	logLevel       *widget.Select
 	logPaused      bool
+	logAutoScroll  bool
 	lastLogRefresh time.Time
 }
 
@@ -60,7 +61,7 @@ func main() {
 	win := fyneApp.NewWindow("AdbPureFlow " + version)
 	win.Resize(fyne.NewSize(1180, 700))
 
-	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core, windowedSize: fyne.NewSize(1180, 700)}
+	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core, windowedSize: fyne.NewSize(1180, 700), logAutoScroll: true}
 	win.SetContent(ui.buildShell())
 	ui.setupShortcuts()
 	win.SetOnClosed(func() {
@@ -112,7 +113,7 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 			}
 			ui.selectedSerial = device.Serial
 			_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = device.Serial })
-			ui.setStatus("Selected "+compactDeviceLabel(device), false)
+			ui.setStatus("Selected "+compactDeviceLabelWithAlias(device, ui.core.State().DeviceAliases[device.Serial]), false)
 			ui.showDevices()
 			return
 		}
@@ -213,7 +214,7 @@ func (ui *desktopUI) setupShortcuts() {
 
 func (ui *desktopUI) setStatus(message string, busy bool) {
 	fyne.Do(func() {
-		ui.status.SetText(shortenText(message, 52))
+		ui.status.SetText(strings.TrimSpace(message))
 		if busy {
 			ui.activity.Show()
 		} else {
@@ -326,7 +327,7 @@ func (ui *desktopUI) syncDeviceSelect(devices []Device, preferredSerial string) 
 	options := make([]string, 0, len(devices))
 	ui.deviceOptionSerial = make(map[string]string, len(devices))
 	for _, device := range devices {
-		base := compactDeviceLabel(device)
+		base := compactDeviceLabelWithAlias(device, ui.core.State().DeviceAliases[device.Serial])
 		option := base
 		for suffix := 2; ; suffix++ {
 			serial, exists := ui.deviceOptionSerial[option]
@@ -365,7 +366,14 @@ func (ui *desktopUI) deviceOptionForSerial(serial string) string {
 }
 
 func compactDeviceLabel(device Device) string {
-	name := strings.TrimSpace(device.DisplayName)
+	return compactDeviceLabelWithAlias(device, "")
+}
+
+func compactDeviceLabelWithAlias(device Device, alias string) string {
+	name := strings.TrimSpace(alias)
+	if name == "" {
+		name = strings.TrimSpace(device.DisplayName)
+	}
 	if name == "" {
 		name = strings.TrimSpace(device.Manufacturer + " " + device.Model)
 	}
@@ -713,7 +721,7 @@ func (ui *desktopUI) showScreen() {
 	d, ok := ui.selectedDevice()
 	deviceText := "No device selected"
 	if ok {
-		deviceText = compactDeviceLabel(d)
+		deviceText = compactDeviceLabelWithAlias(d, ui.core.State().DeviceAliases[d.Serial])
 	}
 
 	always := widget.NewCheck("Keep mirror window on top", nil)
@@ -1103,8 +1111,11 @@ func (ui *desktopUI) showLogs() {
 	})
 	var pause *widget.Button
 	pause = widget.NewButton("Pause", func() {
+		ui.logMu.Lock()
 		ui.logPaused = !ui.logPaused
-		if ui.logPaused {
+		paused := ui.logPaused
+		ui.logMu.Unlock()
+		if paused {
 			pause.SetText("Resume")
 			ui.setStatus("Logs paused", false)
 		} else {
@@ -1112,8 +1123,30 @@ func (ui *desktopUI) showLogs() {
 			ui.setStatus("Logs resumed", false)
 		}
 	})
-	if ui.logPaused {
+	ui.logMu.Lock()
+	paused := ui.logPaused
+	followEnabled := ui.logAutoScroll
+	ui.logMu.Unlock()
+	if paused {
 		pause.SetText("Resume")
+	}
+	followLive := widget.NewButton("Follow live: On", func() {
+		ui.logMu.Lock()
+		ui.logAutoScroll = !ui.logAutoScroll
+		enabled := ui.logAutoScroll
+		ui.logMu.Unlock()
+		if enabled {
+			followLive.SetText("Follow live: On")
+			entries := ui.filteredLogs()
+			if len(entries) > 0 {
+				ui.logList.ScrollTo(widget.ListItemID(len(entries) - 1))
+			}
+		} else {
+			followLive.SetText("Follow live: Off")
+		}
+	})
+	if !followEnabled {
+		followLive.SetText("Follow live: Off")
 	}
 	clear := widget.NewButton("Clear device log", func() {
 		d, ok := ui.requireDevice()
@@ -1168,7 +1201,7 @@ func (ui *desktopUI) showLogs() {
 	})
 
 	filter.OnChanged = func(string) { ui.logList.Refresh() }
-	controls := wrapActions(start, stop, pause, clear, export)
+	controls := wrapActions(start, stop, pause, followLive, clear, export)
 	header := container.NewVBox(
 		widget.NewRichTextFromMarkdown("### Live device logs\nStream Android logcat, narrow the visible entries, then export only the entries that match your filters."),
 		filter,
@@ -1219,10 +1252,11 @@ func (ui *desktopUI) startLogs() {
 	ui.setStatus("Streaming logcat…", true)
 	go func() {
 		_, err := ui.core.adb.StartLogcat(ctx, dev.Serial, func(e LogEntry) {
+			ui.logMu.Lock()
 			if ui.logPaused {
+				ui.logMu.Unlock()
 				return
 			}
-			ui.logMu.Lock()
 			ui.logEntries = append(ui.logEntries, e)
 			if len(ui.logEntries) > 2000 {
 				ui.logEntries = ui.logEntries[len(ui.logEntries)-2000:]
@@ -1231,14 +1265,17 @@ func (ui *desktopUI) startLogs() {
 			if shouldRefresh {
 				ui.lastLogRefresh = time.Now()
 			}
+			follow := ui.logAutoScroll
 			ui.logMu.Unlock()
 			if shouldRefresh {
 				fyne.Do(func() {
 					if ui.logList != nil {
 						ui.logList.Refresh()
-						entries := ui.filteredLogs()
-						if len(entries) > 0 {
-							ui.logList.ScrollTo(widget.ListItemID(len(entries) - 1))
+						if follow {
+							entries := ui.filteredLogs()
+							if len(entries) > 0 {
+								ui.logList.ScrollTo(widget.ListItemID(len(entries) - 1))
+							}
 						}
 					}
 				})
