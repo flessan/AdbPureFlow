@@ -141,6 +141,7 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 		"Wide · 1260 × 700",
 	}, ui.setWindowSize)
 	ui.windowSizeSelect.Selected = "Default · 1180 × 700"
+	ui.windowSizeSelect.Refresh()
 
 	ui.navButtons = make(map[string]*widget.Button)
 	makeNavButton := func(name string, icon fyne.Resource, action func()) *widget.Button {
@@ -254,6 +255,13 @@ func (ui *desktopUI) replaceContent(title string, obj fyne.CanvasObject) {
 
 		// One vertical scroll viewport handles long form-like pages. Collection
 		// widgets such as List retain their own internal scrolling behavior.
+		if title == "Logs" {
+			// widget.List already owns its scroll behavior; do not nest a page
+			// scroll container around a virtualized collection.
+			ui.contentScroll.Direction = container.ScrollNone
+		} else {
+			ui.contentScroll.Direction = container.ScrollVerticalOnly
+		}
 		ui.contentScroll.Content = withPadding(obj, 18, 14)
 		ui.contentScroll.ScrollToTop()
 		ui.contentScroll.Refresh()
@@ -1425,9 +1433,6 @@ func (ui *desktopUI) showSettings() {
 	))
 	window := widget.NewCard("Window layout", "Choose a safe preset or resize the window manually. The sidebar divider can also be dragged to change the workspace width.", container.NewVBox(
 		widget.NewForm(widget.NewFormItem("Window size", ui.windowSizeSelect)),
-		widget.NewLabel("Compact · 1100 × 720"),
-		widget.NewLabel("Default · 1180 × 700"),
-		widget.NewLabel("Wide · 1260 × 700"),
 	))
 	statePath := ui.core.stateStore.path
 	storage := widget.NewCard("Local preferences", "Only non-sensitive application preferences are stored here.", container.NewVBox(
