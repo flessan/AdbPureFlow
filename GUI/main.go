@@ -712,7 +712,7 @@ func (ui *desktopUI) showScreen() {
 	d, ok := ui.selectedDevice()
 	deviceText := "No device selected"
 	if ok {
-		deviceText = d.Label()
+		deviceText = compactDeviceLabel(d)
 	}
 
 	always := widget.NewCheck("Keep mirror window on top", nil)
