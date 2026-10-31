@@ -389,7 +389,10 @@ func (ui *desktopUI) showDevices() {
 			if dev.Serial == ui.selectedSerial {
 				subtitle = "ACTIVE DEVICE · " + subtitle
 			}
-			body.Add(widget.NewCard(name, subtitle, actions))
+			body.Add(widget.NewCard(name, subtitle, container.NewVBox(
+				widget.NewLabelWithStyle("Serial: "+serial, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true}),
+				actions,
+			)))
 		}
 	}
 
@@ -931,6 +934,9 @@ func (ui *desktopUI) showLogs() {
 			ui.setStatus("Logs resumed", false)
 		}
 	})
+	if ui.logPaused {
+		pause.SetText("Resume")
+	}
 	clear := widget.NewButton("Clear device log", func() {
 		d, ok := ui.requireDevice()
 		if !ok {
@@ -976,7 +982,7 @@ func (ui *desktopUI) showLogs() {
 				ui.showError(err)
 				return
 			}
-			ui.setStatus(fmt.Sprintf("Exported %d log entrie(s)", len(entries)), false)
+			ui.setStatus(fmt.Sprintf("Exported %d log entries", len(entries)), false)
 		}, ui.win)
 		save.SetFileName("adbpureflow-logcat.txt")
 		save.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".log"}))
