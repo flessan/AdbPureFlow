@@ -33,6 +33,7 @@ type desktopUI struct {
 	activity        *widget.ProgressBarInfinite
 	contentTitle    *widget.Label
 	content         *fyne.Container
+	navButtons      map[string]*widget.Button
 
 	monitorCancel  context.CancelFunc
 	logCancel      context.CancelFunc
@@ -100,30 +101,48 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 	})
 	ui.deviceSelect.PlaceHolder = "Select device"
 
-	top := container.NewBorder(nil, nil,
+	brand := container.NewVBox(
 		widget.NewLabelWithStyle(appName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		container.NewHBox(
-			widget.NewButtonWithIcon("Add Wireless", theme.ContentAddIcon(), ui.showWirelessDialog),
-			widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
-		),
-		container.NewBorder(nil, nil, widget.NewLabel("Device:"), nil, ui.deviceSelect),
+		widget.NewLabel("Android device workstation"),
+	)
+	deviceTarget := container.NewBorder(nil, nil, widget.NewLabel("DEVICE"), nil, ui.deviceSelect)
+	actions := container.NewHBox(
+		widget.NewButtonWithIcon("Add Wireless", theme.ContentAddIcon(), ui.showWirelessDialog),
+		widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
+	)
+	top := withPadding(container.NewBorder(nil, nil, brand, container.NewHBox(deviceTarget, actions), nil), 20, 12)
+
+	ui.navButtons = make(map[string]*widget.Button)
+	makeNavButton := func(name string, icon fyne.Resource, action func()) *widget.Button {
+		button := widget.NewButtonWithIcon(name, icon, action)
+		button.Importance = widget.MediumImportance
+		ui.navButtons[name] = button
+		return button
+	}
+	nav := container.NewVBox(
+		widget.NewLabelWithStyle("WORKSPACE", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		makeNavButton("Devices", theme.ComputerIcon(), ui.showDevices),
+		makeNavButton("Screen", theme.MediaPlayIcon(), ui.showScreen),
+		makeNavButton("Apps", theme.FileIcon(), ui.showApps),
+		makeNavButton("Logs", theme.DocumentIcon(), ui.showLogs),
+		makeNavButton("Deploy", theme.UploadIcon(), ui.showDeploy),
+		makeNavButton("Workflows", theme.ListIcon(), ui.showWorkflows),
+		widget.NewSeparator(),
+		widget.NewLabelWithStyle("TOOLS", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		makeNavButton("Settings", theme.SettingsIcon(), ui.showSettings),
+		makeNavButton("Diagnostics", theme.WarningIcon(), ui.showDiagnostics),
+		makeNavButton("Help", theme.HelpIcon(), ui.showHelp),
 	)
 
-	nav := container.NewVBox(
-		widget.NewButtonWithIcon("Devices", theme.ComputerIcon(), ui.showDevices),
-		widget.NewButtonWithIcon("Screen", theme.MediaPlayIcon(), ui.showScreen),
-		widget.NewButtonWithIcon("Apps", theme.FileIcon(), ui.showApps),
-		widget.NewButtonWithIcon("Logs", theme.FileIcon(), ui.showLogs),
-		widget.NewButtonWithIcon("Deploy", theme.FileIcon(), ui.showDeploy),
-		widget.NewButtonWithIcon("Workflows", theme.SettingsIcon(), ui.showWorkflows),
-		widget.NewSeparator(),
-		widget.NewButtonWithIcon("Settings", theme.SettingsIcon(), ui.showSettings),
-		widget.NewButtonWithIcon("Diagnostics", theme.WarningIcon(), ui.showDiagnostics),
-		widget.NewButtonWithIcon("Help", theme.HelpIcon(), ui.showHelp),
+	center := container.NewBorder(
+		withPadding(ui.contentTitle, 22, 12),
+		nil, nil, nil,
+		ui.content,
 	)
-	center := container.NewBorder(container.NewPadded(ui.contentTitle), nil, nil, nil, ui.content)
-	bottom := container.NewBorder(nil, nil, ui.status, nil, ui.activity)
-	shell := container.NewBorder(top, bottom, nav, nil, center)
+	sidebar := withPadding(nav, 14, 18)
+	bottom := withPadding(container.NewBorder(nil, nil, ui.status, nil, ui.activity), 20, 8)
+	shell := container.NewBorder(top, bottom, sidebar, nil, center)
+
 	ui.showDevices()
 	return shell
 }
@@ -172,7 +191,20 @@ func (ui *desktopUI) notify(title, message string) {
 func (ui *desktopUI) replaceContent(title string, obj fyne.CanvasObject) {
 	fyne.Do(func() {
 		ui.contentTitle.SetText(title)
-		ui.content.Objects = []fyne.CanvasObject{obj}
+
+		active := title
+		if active == "Help & Tutorials" {
+			active = "Help"
+		}
+		for name, button := range ui.navButtons {
+			button.Importance = widget.MediumImportance
+			if name == active {
+				button.Importance = widget.HighImportance
+			}
+			button.Refresh()
+		}
+
+		ui.content.Objects = []fyne.CanvasObject{withPadding(obj, 22, 18)}
 		ui.content.Refresh()
 	})
 }
@@ -308,45 +340,66 @@ func (ui *desktopUI) refreshDevicesPassive(ctx context.Context) {
 }
 
 func (ui *desktopUI) showDevices() {
-	rows := container.NewVBox()
+	body := container.NewVBox(
+		widget.NewRichTextFromMarkdown("### Your Android devices\nConnect over USB or Wireless debugging. Select one device to use it across Screen, Apps, Logs, and Deploy."),
+	)
+
 	if len(ui.devices) == 0 {
-		if ui.selectedSerial != "" {
-			rows.Add(widget.NewLabel("Previously selected device is unavailable: " + ui.selectedSerial))
-		}
-		rows.Add(widget.NewLabel("No devices yet. Connect USB with debugging enabled, or use Add Wireless for Android 11+ Wireless debugging."))
+		detail := widget.NewLabel("Connect your phone with a data-capable USB cable and accept the debugging prompt, or pair a device over Android 11+ Wireless debugging.")
+		actions := container.NewHBox(
+			widget.NewButtonWithIcon("Add Wireless Device", theme.ContentAddIcon(), ui.showWirelessDialog),
+			widget.NewButtonWithIcon("Refresh Devices", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
+		)
+		body.Add(widget.NewCard("No Android device connected", "Your workspace is ready when a device appears here.", container.NewVBox(detail, actions)))
 	} else {
-		for _, d := range ui.devices {
-			dev := d
-			status := fmt.Sprintf("%s • %s • Android %s • Battery %s • Storage %s", d.Transport, d.Status, fallback(d.AndroidVersion, "unknown"), fallback(d.BatteryPercent, "unknown"), fallback(d.StorageSummary, "unknown"))
-			name := d.Label()
-			if alias := ui.core.State().DeviceAliases[d.Serial]; alias != "" {
-				name = alias + "  —  " + d.Serial
+		for _, device := range ui.devices {
+			dev := device
+			name := dev.Label()
+			if alias := ui.core.State().DeviceAliases[dev.Serial]; alias != "" {
+				name = alias
 			}
-			selectedMark := ""
-			if d.Serial == ui.selectedSerial {
-				selectedMark = "Selected • "
+			status := fmt.Sprintf("%s · %s · Android %s · Battery %s · Storage %s",
+				dev.Transport,
+				dev.Status,
+				fallback(dev.AndroidVersion, "unknown"),
+				fallback(dev.BatteryPercent, "unknown"),
+				fallback(dev.StorageSummary, "unknown"),
+			)
+			serial := dev.Serial
+			selectText := "Select device"
+			if dev.Serial == ui.selectedSerial {
+				selectText = "Currently selected"
 			}
-			rows.Add(container.NewBorder(nil, nil, nil,
-				container.NewHBox(
-					widget.NewButton("Select", func() {
-						ui.selectedSerial = dev.Serial
-						_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = dev.Serial })
-						ui.deviceSelect.SetSelected(dev.Label())
-					}),
-					widget.NewButton("Rename", func() { ui.renameDevice(dev.Serial) }),
-					widget.NewButton("Disconnect", func() { go ui.disconnectDevice(dev.Serial) }),
-				),
-				container.NewVBox(widget.NewLabelWithStyle(name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}), widget.NewLabel(selectedMark+status))))
-			rows.Add(widget.NewSeparator())
+			actions := container.NewHBox(
+				widget.NewButton(selectText, func() {
+					ui.selectedSerial = dev.Serial
+					_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = dev.Serial })
+					ui.deviceSelect.SetSelected(dev.Label())
+					ui.setStatus("Selected "+dev.Label(), false)
+					ui.showDevices()
+				}),
+				widget.NewButton("Rename", func() { ui.renameDevice(dev.Serial) }),
+				widget.NewButton("Disconnect", func() { go ui.disconnectDevice(dev.Serial) }),
+				widget.NewButton("Copy serial", func() {
+					ui.win.Clipboard().SetContent(serial)
+					ui.setStatus("Copied device serial", false)
+				}),
+			)
+			subtitle := status
+			if dev.Serial == ui.selectedSerial {
+				subtitle = "ACTIVE DEVICE · " + subtitle
+			}
+			body.Add(widget.NewCard(name, subtitle, actions))
 		}
 	}
+
 	if endpoints := ui.core.State().WirelessEndpoints; len(endpoints) > 0 {
-		rows.Add(widget.NewRichTextFromMarkdown("### Known wireless endpoints"))
+		body.Add(widget.NewRichTextFromMarkdown("### Saved wireless devices\nReconnect a previously paired endpoint or remove it from this list."))
 		for _, endpoint := range endpoints {
 			addr := endpoint
 			connected := false
-			for _, d := range ui.devices {
-				if d.Serial == addr {
+			for _, device := range ui.devices {
+				if device.Serial == addr {
 					connected = true
 					break
 				}
@@ -355,14 +408,15 @@ func (ui *desktopUI) showDevices() {
 			if connected {
 				state = "Connected"
 			}
-			rows.Add(container.NewBorder(nil, nil, widget.NewLabel(addr+" — "+state), container.NewHBox(
+			actions := container.NewHBox(
 				widget.NewButton("Reconnect", func() { go ui.reconnectWireless(addr) }),
 				widget.NewButton("Forget", func() { ui.forgetWireless(addr) }),
-			), nil))
+			)
+			body.Add(widget.NewCard(addr, state, actions))
 		}
 	}
-	intro := widget.NewRichTextFromMarkdown("### Device workstation\nSelect a device once; Screen, Apps, Logs, Deploy, and Workflows use that same target. Unauthorized devices need you to accept Android's debugging prompt on the phone.")
-	ui.replaceContent("Devices", container.NewVScroll(container.NewVBox(intro, rows)))
+
+	ui.replaceContent("Devices", container.NewVScroll(body))
 }
 
 func (ui *desktopUI) renameDevice(serial string) {
@@ -487,6 +541,7 @@ func (ui *desktopUI) showScreen() {
 	if ok {
 		deviceText = d.Label()
 	}
+
 	always := widget.NewCheck("Keep mirror window on top", nil)
 	fullscreen := widget.NewCheck("Start fullscreen", nil)
 	quality := widget.NewSelect([]string{"Native", "1080p", "720p"}, nil)
@@ -521,9 +576,7 @@ func (ui *desktopUI) showScreen() {
 			}
 			if recordPath != "" {
 				ui.setStatus("Mirror and recording active", false)
-				fyne.Do(func() {
-					mirrorState.SetText("Mirror and recording are active. Stop Mirror finishes the recording file.")
-				})
+				fyne.Do(func() { mirrorState.SetText("Mirror and recording are active. Stop Mirror finishes the recording file.") })
 			} else {
 				ui.setStatus("Mirror active in companion window", false)
 				fyne.Do(func() { mirrorState.SetText("Mirror active in scrcpy companion window.") })
@@ -551,9 +604,7 @@ func (ui *desktopUI) showScreen() {
 		}()
 	}
 
-	start := widget.NewButtonWithIcon("Start Mirror", theme.MediaPlayIcon(), func() {
-		startWithOptions("")
-	})
+	start := widget.NewButtonWithIcon("Start Mirror", theme.MediaPlayIcon(), func() { startWithOptions("") })
 	record := widget.NewButton("Start Mirror + Record…", func() {
 		save := dialog.NewFileSave(func(w fyne.URIWriteCloser, err error) {
 			if err != nil || w == nil {
@@ -571,19 +622,23 @@ func (ui *desktopUI) showScreen() {
 		if d, ok := ui.selectedDevice(); ok {
 			ui.core.scrcpy.StopMirror(d.Serial)
 			ui.setStatus("Mirror stopped", false)
+			mirrorState.SetText("Mirror stop requested.")
 		}
 	})
 	screenshot := widget.NewButtonWithIcon("Capture Screenshot…", theme.DocumentSaveIcon(), ui.saveScreenshot)
-	body := container.NewVBox(
-		widget.NewRichTextFromMarkdown("### Screen\nAdbPureFlow manages scrcpy as an intentional Windows companion window, not an embedded web view. That keeps mouse, keyboard, fullscreen, rotation, and recording behavior aligned with scrcpy itself."),
-		widget.NewLabel("Target: "+deviceText),
-		mirrorState,
-		widget.NewForm(widget.NewFormItem("Size", quality), widget.NewFormItem("Bit rate", bitrate)),
+
+	intro := widget.NewCard("Screen mirroring", "Powered by scrcpy in a native companion window.", widget.NewLabel("Mouse, keyboard, fullscreen, rotation, and recording stay in scrcpy itself. AdbPureFlow manages the session and its lifecycle."))
+	target := widget.NewCard("Selected device", deviceText, widget.NewLabel("The selected device is shared with the other workspaces."))
+	options := widget.NewCard("Mirror options", "Tune the session before starting.", container.NewVBox(
+		widget.NewForm(widget.NewFormItem("Resolution", quality), widget.NewFormItem("Video bit rate", bitrate)),
 		always,
 		fullscreen,
+	))
+	controls := widget.NewCard("Session controls", "Start, stop, record, or capture the current device screen.", container.NewVBox(
+		mirrorState,
 		container.NewHBox(start, record, stop, screenshot),
-	)
-	ui.replaceContent("Screen", body)
+	))
+	ui.replaceContent("Screen", container.NewVBox(intro, target, options, controls))
 }
 
 func (ui *desktopUI) saveScreenshot() {
@@ -720,56 +775,90 @@ func (ui *desktopUI) showApps() {
 	if !ok {
 		return
 	}
+
 	filter := widget.NewEntry()
-	filter.SetPlaceHolder("Search packages…")
+	filter.SetPlaceHolder("Search by package name…")
 	showSystem := widget.NewCheck("Include system apps", nil)
+	countLabel := widget.NewLabel("Loading apps…")
 	listBox := container.NewVBox(widget.NewLabel("Loading apps…"))
+	var loaded []PackageInfo
+
 	render := func(pkgs []PackageInfo) {
-		q := strings.ToLower(filter.Text)
+		query := strings.ToLower(strings.TrimSpace(filter.Text))
 		listBox.Objects = nil
-		for _, p := range pkgs {
-			if q != "" && !strings.Contains(strings.ToLower(p.PackageName), q) {
+		visible := 0
+		for _, app := range pkgs {
+			if query != "" && !strings.Contains(strings.ToLower(app.PackageName), query) {
 				continue
 			}
-			pkg := p.PackageName
+			pkg := app.PackageName
 			kind := "User app"
-			if !p.UserApp {
+			if !app.UserApp {
 				kind = "System app"
 			}
-			listBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(
+			actions := container.NewHBox(
 				widget.NewButton("Launch", func() { go ui.packageAction("Launch", pkg, ui.core.adb.Launch) }),
-				widget.NewButton("Stop", func() { go ui.packageAction("Force stop", pkg, ui.core.adb.ForceStop) }),
-				widget.NewButton("Clear", func() {
+				widget.NewButton("Force stop", func() { go ui.packageAction("Force stop", pkg, ui.core.adb.ForceStop) }),
+				widget.NewButton("Clear data", func() {
 					ui.confirmPackageAction("Clear data", pkg, "This removes local app data on the selected Android device.", ui.core.adb.ClearData)
 				}),
 				widget.NewButton("Uninstall", func() {
 					ui.confirmPackageAction("Uninstall", pkg, "This removes the app from the selected Android device.", ui.core.adb.Uninstall)
 				}),
-				widget.NewButton("Copy", func() { ui.win.Clipboard().SetContent(pkg); ui.setStatus("Copied package name", false) }),
-			), container.NewVBox(widget.NewLabelWithStyle(pkg, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true}), widget.NewLabel(kind+" • "+fallback(p.APKPath, "installed package")))))
-			listBox.Add(widget.NewSeparator())
+				widget.NewButton("Copy package", func() {
+					ui.win.Clipboard().SetContent(pkg)
+					ui.setStatus("Copied package name", false)
+				}),
+			)
+			listBox.Add(widget.NewCard(pkg, kind, container.NewVBox(
+				widget.NewLabel(fallback(app.APKPath, "Installed package")),
+				actions,
+			)))
+			visible++
+		}
+
+		countLabel.SetText(fmt.Sprintf("%d app(s)", visible))
+		if visible == 0 {
+			message := "No apps are installed on this device."
+			if len(pkgs) > 0 {
+				message = "No packages match your search. Try another package name or clear the filter."
+			}
+			listBox.Add(widget.NewCard("No matching apps", message, widget.NewLabel("Change the search or refresh the app list.")))
 		}
 		listBox.Refresh()
 	}
-	filter.OnChanged = func(string) {}
+
+	filter.OnChanged = func(string) { render(loaded) }
 	load := func(includeSystem bool) {
-		listBox.Objects = []fyne.CanvasObject{widget.NewLabel("Loading apps…")}
+		loaded = nil
+		countLabel.SetText("Loading apps…")
+		listBox.Objects = []fyne.CanvasObject{widget.NewLabel("Loading installed apps…")}
 		listBox.Refresh()
 		go func() {
-			pkgs, err := ui.core.adb.Packages(context.Background(), dev.Serial, !includeSystem)
+			packages, err := ui.core.adb.Packages(context.Background(), dev.Serial, !includeSystem)
 			if err != nil {
 				ui.showError(err)
 				return
 			}
-			fyne.Do(func() { render(pkgs); filter.OnChanged = func(string) { render(pkgs) } })
+			fyne.Do(func() {
+				loaded = packages
+				render(loaded)
+			})
 		}()
 	}
 	showSystem.OnChanged = func(include bool) { load(include) }
-	ui.replaceContent("Apps", container.NewBorder(container.NewVBox(filter, showSystem), nil, nil, nil, container.NewVScroll(listBox)))
+
+	install := widget.NewButtonWithIcon("Install APK…", theme.ContentAddIcon(), func() { ui.chooseAPK(ui.inspectAPK) })
+	refresh := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { load(showSystem.Checked) })
+	toolbar := container.NewHBox(showSystem, install, refresh, countLabel)
+	header := container.NewVBox(
+		widget.NewRichTextFromMarkdown("### Installed applications\nSearch packages and run actions on the selected Android device. Destructive actions ask for confirmation."),
+		filter,
+		toolbar,
+	)
+	ui.replaceContent("Apps", container.NewBorder(header, nil, nil, nil, container.NewVScroll(listBox)))
 	load(false)
 }
-
-type packageActionFunc func(context.Context, string, string) (string, error)
 
 func (ui *desktopUI) confirmPackageAction(name, pkg, warning string, fn packageActionFunc) {
 	dialog.NewConfirm(name+"?", warning+"\n\nPackage: "+pkg, func(ok bool) {
@@ -815,29 +904,92 @@ func (ui *desktopUI) showLogs() {
 	level.SetSelected("All levels")
 	ui.logFilter = filter
 	ui.logLevel = level
-	ui.logList = widget.NewList(func() int { return len(ui.filteredLogs()) }, func() fyne.CanvasObject { return widget.NewLabel("template") }, func(id widget.ListItemID, obj fyne.CanvasObject) {
+	ui.logList = widget.NewList(func() int { return len(ui.filteredLogs()) }, func() fyne.CanvasObject {
+		label := widget.NewLabel("Log entry")
+		label.Wrapping = fyne.TextWrapWord
+		return label
+	}, func(id widget.ListItemID, obj fyne.CanvasObject) {
 		entries := ui.filteredLogs()
 		if id < len(entries) {
 			obj.(*widget.Label).SetText(formatLog(entries[id]))
 		}
 	})
-	start := widget.NewButton("Start", func() { ui.startLogs() })
-	stop := widget.NewButton("Stop", func() { ui.stopLogs(); ui.setStatus("Log stream stopped", false) })
-	pause := widget.NewButton("Pause/Resume", func() {
+
+	start := widget.NewButtonWithIcon("Start", theme.MediaPlayIcon(), func() { ui.startLogs() })
+	stop := widget.NewButtonWithIcon("Stop", theme.MediaStopIcon(), func() {
+		ui.stopLogs()
+		ui.setStatus("Log stream stopped", false)
+	})
+	pause := widget.NewButton("Pause", func() {
 		ui.logPaused = !ui.logPaused
-		ui.setStatus(map[bool]string{true: "Logs paused", false: "Logs resumed"}[ui.logPaused], false)
-	})
-	clear := widget.NewButton("Clear Device Log", func() {
-		if d, ok := ui.requireDevice(); ok {
-			go ui.core.adb.ClearLogcat(context.Background(), d.Serial)
+		if ui.logPaused {
+			pause.SetText("Resume")
+			ui.setStatus("Logs paused", false)
+		} else {
+			pause.SetText("Pause")
+			ui.setStatus("Logs resumed", false)
 		}
-		ui.logMu.Lock()
-		ui.logEntries = nil
-		ui.logMu.Unlock()
-		ui.logList.Refresh()
 	})
+	clear := widget.NewButton("Clear device log", func() {
+		d, ok := ui.requireDevice()
+		if !ok {
+			return
+		}
+		go func() {
+			if err := ui.core.adb.ClearLogcat(context.Background(), d.Serial); err != nil {
+				ui.showError(err)
+				return
+			}
+			ui.logMu.Lock()
+			ui.logEntries = nil
+			ui.logMu.Unlock()
+			fyne.Do(func() { ui.logList.Refresh() })
+			ui.setStatus("Device log cleared", false)
+		}()
+	})
+	export := widget.NewButtonWithIcon("Export visible logs…", theme.DocumentSaveIcon(), func() {
+		entries := ui.filteredLogs()
+		if len(entries) == 0 {
+			ui.showInfo("Nothing to export", "There are no visible log entries. Start logcat or adjust the filters first.")
+			return
+		}
+		var output strings.Builder
+		for _, entry := range entries {
+			output.WriteString(formatLog(entry))
+			output.WriteByte('\n')
+		}
+		save := dialog.NewFileSave(func(file fyne.URIWriteCloser, err error) {
+			if err != nil {
+				ui.showError(err)
+				return
+			}
+			if file == nil {
+				return
+			}
+			if _, err := file.Write([]byte(output.String())); err != nil {
+				_ = file.Close()
+				ui.showError(err)
+				return
+			}
+			if err := file.Close(); err != nil {
+				ui.showError(err)
+				return
+			}
+			ui.setStatus(fmt.Sprintf("Exported %d log entrie(s)", len(entries)), false)
+		}, ui.win)
+		save.SetFileName("adbpureflow-logcat.txt")
+		save.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".log"}))
+		save.Show()
+	})
+
 	filter.OnChanged = func(string) { ui.logList.Refresh() }
-	ui.replaceContent("Logs", container.NewBorder(container.NewVBox(widget.NewRichTextFromMarkdown("Live logcat uses readable rows while preserving the raw technical message. The visible buffer keeps the latest 2,000 entries to stay responsive."), filter, level, container.NewHBox(start, stop, pause, clear)), nil, nil, nil, ui.logList))
+	controls := container.NewHBox(start, stop, pause, clear, export)
+	header := container.NewVBox(
+		widget.NewRichTextFromMarkdown("### Live device logs\nStream Android logcat, narrow the visible entries, then export only the entries that match your filters."),
+		filter,
+		container.NewHBox(level, controls),
+	)
+	ui.replaceContent("Logs", container.NewBorder(header, nil, nil, nil, ui.logList))
 }
 
 func (ui *desktopUI) filteredLogs() []LogEntry {
@@ -926,22 +1078,26 @@ func (ui *desktopUI) showDeploy() {
 	apkPath := widget.NewEntry()
 	apkPath.SetPlaceHolder("Choose an APK artifact…")
 	pkg := widget.NewEntry()
-	pkg.SetPlaceHolder("Package to launch/filter, e.g. com.example.app")
-	clear := widget.NewCheck("Clear data before launch", nil)
-	mirror := widget.NewCheck("Start screen mirror", nil)
-	logs := widget.NewCheck("Open filtered logs after deploy", nil)
+	pkg.SetPlaceHolder("Package to launch, e.g. com.example.app")
+	clear := widget.NewCheck("Clear app data before launch", nil)
+	mirror := widget.NewCheck("Start screen mirror after install", nil)
+	logs := widget.NewCheck("Open device logs after deploy", nil)
+	progress := widget.NewLabel("Ready. Choose an APK and review the options.")
+
+	setAPK := func(path string) {
+		apkPath.SetText(path)
+		go func() {
+			meta, inspectErr := InspectAPK(context.Background(), path)
+			if inspectErr == nil && meta.PackageID != "" {
+				fyne.Do(func() { pkg.SetText(meta.PackageID) })
+			}
+		}()
+	}
 	choose := widget.NewButton("Browse…", func() {
-		ui.chooseAPK(func(path string) {
-			apkPath.SetText(path)
-			go func() {
-				meta, inspectErr := InspectAPK(context.Background(), path)
-				if inspectErr == nil && meta.PackageID != "" {
-					fyne.Do(func() { pkg.SetText(meta.PackageID) })
-				}
-			}()
-		})
+		ui.chooseAPK(setAPK)
 	})
-	run := widget.NewButtonWithIcon("Deploy", theme.FileIcon(), func() {
+
+	run := widget.NewButtonWithIcon("Run deploy", theme.MediaPlayIcon(), func() {
 		dev, ok := ui.requireDevice()
 		if !ok {
 			return
@@ -965,51 +1121,93 @@ func (ui *desktopUI) showDeploy() {
 		if mirror.Checked {
 			profile.Actions = append(profile.Actions, FlowAction{Type: FlowStartMirror})
 		}
+		artifact := apkPath.Text
+		openLogs := logs.Checked
 		go func() {
 			ui.setStatus("Deploying…", true)
-			err := ui.core.RunFlow(ctx, dev.Serial, profile, func(e FlowEvent) {
-				ui.setStatus(string(e.Action.Type)+" "+e.State, true)
+			fyne.Do(func() { progress.SetText("Deployment started…") })
+			err := ui.core.RunFlow(ctx, dev.Serial, profile, func(event FlowEvent) {
+				ui.setStatus(string(event.Action.Type)+" "+event.State, true)
+				fyne.Do(func() { progress.SetText(string(event.Action.Type) + " · " + event.State) })
 			})
 			deployCancel = nil
 			if err != nil {
 				ui.setStatus("Deploy failed", false)
+				fyne.Do(func() { progress.SetText("Deployment failed: " + err.Error()) })
 				ui.showError(err)
 				return
 			}
 			ui.setStatus("Deploy complete", false)
-			ui.notify("Deploy complete", filepath.Base(apkPath.Text))
+			fyne.Do(func() { progress.SetText("Deployment completed successfully.") })
+			ui.notify("Deploy complete", filepath.Base(artifact))
 			_ = ui.core.SaveState(func(state *AppState) {
-				state.RecentAPKs = addRecentPath(state.RecentAPKs, apkPath.Text, 12)
+				state.RecentAPKs = addRecentPath(state.RecentAPKs, artifact, 12)
 			})
-			if logs.Checked {
+			if openLogs {
 				fyne.Do(ui.showLogs)
 				ui.startLogs()
 			}
 		}()
 	})
-	cancelButton := widget.NewButton("Cancel Deploy", func() {
+	cancelButton := widget.NewButton("Cancel deploy", func() {
 		if deployCancel != nil {
 			deployCancel()
 			ui.setStatus("Deploy cancellation requested", false)
+			progress.SetText("Cancellation requested…")
 		}
 	})
-	ui.replaceContent("Deploy", container.NewVBox(
-		widget.NewRichTextFromMarkdown("### Repeatable deploy\nChoose an APK artifact, choose behavior, then run a deterministic install → optional clear → launch → mirror/log flow. Failures stop the sequence instead of being reported as success."),
-		container.NewBorder(nil, nil, nil, choose, apkPath),
+
+	recentContent := container.NewVBox()
+	recentPaths := ui.core.State().RecentAPKs
+	if len(recentPaths) == 0 {
+		recentContent.Add(widget.NewLabel("APKs appear here after a successful deployment."))
+	} else {
+		for _, recentPath := range recentPaths {
+			path := recentPath
+			recentContent.Add(widget.NewCard(filepath.Base(path), path, widget.NewButton("Use this APK", func() { setAPK(path) })))
+		}
+	}
+
+	artifactCard := widget.NewCard("APK artifact", "Choose a local APK or reuse a recent artifact.", container.NewBorder(nil, nil, nil, choose, apkPath))
+	optionsCard := widget.NewCard("Deployment options", "Choose what should happen after installation.", container.NewVBox(
 		pkg,
 		clear,
 		mirror,
 		logs,
+	))
+	runCard := widget.NewCard("Deployment progress", "The flow stops when a step fails; it does not report partial success as complete.", container.NewVBox(
+		progress,
 		container.NewHBox(run, cancelButton),
+	))
+	recentCard := widget.NewCard("Recent APKs", "Quickly reuse a previously deployed artifact.", recentContent)
+
+	ui.replaceContent("Deploy", container.NewVBox(
+		widget.NewRichTextFromMarkdown("### Repeatable deployment\nInstall an APK and optionally clear data, launch the app, start screen mirroring, or open logcat."),
+		artifactCard,
+		optionsCard,
+		runCard,
+		recentCard,
 	))
 }
 
 func (ui *desktopUI) showWorkflows() {
-	ui.replaceContent("Workflows", widget.NewRichTextFromMarkdown("### Flow automation\nThe workflow engine is implemented underneath Deploy and currently executes Install APK, Clear Data, Launch App, Start Mirror, and Wait with explicit running/complete/failed states. Live logs remain a UI-owned streaming feature, so Deploy opens Logs after a successful flow instead of pretending Start Logs is a completed core action. A persistent visual editor is not exposed yet because the available actions should remain honest and reliable rather than decorative."))
+	description := widget.NewCard(
+		"Repeatable device actions",
+		"Run a predictable sequence instead of repeating the same manual steps.",
+		widget.NewLabel("The workflow engine currently supports Install APK, Clear Data, Launch App, Start Mirror, and Wait. Deploy uses this same engine and reports each step as it runs."),
+	)
+	steps := container.NewVBox(
+		widget.NewCard("1 · Install APK", "Install an APK file on the selected device.", widget.NewLabel("The artifact is validated and installed through ADB.")),
+		widget.NewCard("2 · Optional cleanup", "Clear application data before launching.", widget.NewLabel("This step is opt-in because it removes local app data.")),
+		widget.NewCard("3 · Launch and inspect", "Launch the package, then optionally open mirror and logs.", widget.NewLabel("The flow stops on a failed step and preserves the error for troubleshooting.")),
+	)
+	actions := widget.NewCard("Create a deployment run", "Choose the APK and configure the available actions.", widget.NewButtonWithIcon("Open Deploy", theme.UploadIcon(), ui.showDeploy))
+	ui.replaceContent("Workflows", container.NewVBox(description, steps, actions))
 }
 
 func (ui *desktopUI) showDiagnostics() {
-	box := container.NewVBox(widget.NewLabel("Running diagnostics…"), widget.NewButton("Restart ADB Server", func() {
+	box := container.NewVBox(widget.NewLabel("Running diagnostics…"))
+	restart := widget.NewButtonWithIcon("Restart ADB server", theme.ViewRefreshIcon(), func() {
 		go func() {
 			ui.setStatus("Restarting ADB server…", true)
 			err := ui.core.adb.RestartServer(context.Background())
@@ -1021,18 +1219,25 @@ func (ui *desktopUI) showDiagnostics() {
 			ui.setStatus("ADB server restarted", false)
 			ui.showDiagnostics()
 		}()
-	}))
-	ui.replaceContent("Diagnostics", container.NewVScroll(box))
+	})
+	ui.replaceContent("Diagnostics", container.NewVBox(
+		widget.NewRichTextFromMarkdown("### Device and tool health\nChecks ADB availability, device authorization, and scrcpy capability. Expand technical details only when you need to investigate a failure."),
+		restart,
+		box,
+	))
 	go func() {
 		checks := ui.core.Doctor(context.Background())
 		fyne.Do(func() {
 			box.Objects = nil
-			for _, c := range checks {
-				box.Add(widget.NewRichTextFromMarkdown(fmt.Sprintf("**%s:** %s\n\n%s\n\n%s", c.Name, c.Status, c.Message, c.Recovery)))
-				if c.Technical != "" {
-					box.Add(widget.NewAccordion(widget.NewAccordionItem("Technical details", widget.NewLabel(c.Technical))))
+			for _, check := range checks {
+				content := container.NewVBox(
+					widget.NewLabel(check.Message),
+					widget.NewLabel("Suggested action: "+check.Recovery),
+				)
+				if check.Technical != "" {
+					content.Add(widget.NewAccordion(widget.NewAccordionItem("Technical details", widget.NewLabel(check.Technical))))
 				}
-				box.Add(widget.NewSeparator())
+				box.Add(widget.NewCard(check.Name, check.Status, content))
 			}
 			box.Refresh()
 		})
@@ -1057,18 +1262,23 @@ func (ui *desktopUI) showSettings() {
 	})
 	themeSelect.SetSelected(fallback(ui.core.State().Theme, "system"))
 	statePath := ui.core.stateStore.path
-	body := container.NewVBox(
-		widget.NewRichTextFromMarkdown("### Settings\nAdbPureFlow stores non-sensitive preferences in the current user's application data. External tools are kept in the current user's cache/tools location so the app does not need administrator rights."),
+	appearance := widget.NewCard("Appearance", "Choose how AdbPureFlow follows your desktop.", container.NewVBox(
 		widget.NewForm(widget.NewFormItem("Theme", themeSelect)),
-		widget.NewLabel("Preferences: "+statePath),
-		widget.NewButton("Open Help & Tutorials", ui.showHelp),
-	)
-	ui.replaceContent("Settings", body)
+	))
+	storage := widget.NewCard("Local preferences", "Only non-sensitive application preferences are stored here.", container.NewVBox(
+		widget.NewLabel("Preferences file:"),
+		widget.NewLabelWithStyle(statePath, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true}),
+		widget.NewLabel("Downloaded tools are stored in the current user's cache/config directory so a normal installation does not need administrator rights."),
+	))
+	help := widget.NewCard("Need a hand?", "Setup steps and troubleshooting are always available.", widget.NewButtonWithIcon("Open Help & Tutorials", theme.HelpIcon(), ui.showHelp))
+	ui.replaceContent("Settings", container.NewVBox(appearance, storage, help))
 }
 
 func (ui *desktopUI) showHelp() {
-	text := "### Help & Tutorials\n\n**New here? Baru di sini?** Start with Devices: connect by USB, or Add Wireless for Android 11+ pairing-code setup. Then try Screen, Install APK, Apps, Logs, and Deploy.\n\n**Keyboard:** Ctrl+K opens the command palette. Ctrl+R refreshes devices.\n\n**Troubleshooting:** Diagnostics checks ADB, connected devices, authorization, and scrcpy. Raw details are kept behind expandable technical sections. Help can be reopened from Settings → Open Help & Tutorials.\n\n**Windows-first choices:** APK selection, screenshots, and build artifacts use native file dialogs. File management intentionally stays in Windows Explorer where possible."
-	ui.replaceContent("Help & Tutorials", widget.NewRichTextFromMarkdown(text))
+	guide := widget.NewCard("Start here", "A short route through the main workspaces.", widget.NewRichTextFromMarkdown("1. **Devices:** connect by USB or Add Wireless, then select your phone.\n2. **Screen:** start scrcpy mirroring, capture a screenshot, or record a session.\n3. **Apps:** search installed packages, launch, stop, clear data, or uninstall.\n4. **Logs:** stream logcat, filter entries, and export the visible results.\n5. **Deploy:** install an APK and optionally clear, launch, mirror, or open logs."))
+	shortcuts := widget.NewCard("Keyboard shortcuts", "Use the app without leaving the keyboard.", widget.NewRichTextFromMarkdown("- **Ctrl+K** opens the command palette.\n- **Ctrl+R** refreshes connected devices."))
+	recovery := widget.NewCard("When something does not work", "Start with Diagnostics before changing device settings.", widget.NewLabel("Check that USB debugging is enabled, accept the RSA prompt on the phone, and verify ADB/scrcpy in Diagnostics. Wireless pairing uses Android's pairing-code flow; QR pairing is not simulated."))
+	ui.replaceContent("Help & Tutorials", container.NewVBox(guide, shortcuts, recovery))
 }
 
 func (ui *desktopUI) copySelectedSerial() {
