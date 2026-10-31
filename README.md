@@ -27,7 +27,7 @@ This repository has started the migration from the earlier APK installer/mirror 
 - Settings for theme selection and persisted non-sensitive user state in per-user application data.
 - Clipboard shortcuts/actions for device serials and package names, plus desktop notifications for completed long-running actions where supported by the OS.
 - Native workspace shell with consistent page spacing, clearer card-based sections, and active navigation state.
-- Collapsible, independently scrollable sidebar; a shared page-level vertical scroll host; window-size presets; and full-screen/windowed controls.
+- Resizable Fyne split-view sidebar with its own scroll area, shared page-level scrolling, bounded device-picker labels, safe window-size presets, and full-screen/windowed controls.
 - Command palette via `Ctrl+K`; refresh devices via `Ctrl+R`; toggle the sidebar with `Ctrl+B`; toggle full screen with `F11` and return to windowed mode with `Esc`.
 
 See [`docs/AUDIT.md`](docs/AUDIT.md) for the repository audit, [`docs/HARDENING.md`](docs/HARDENING.md) for reliability findings, [`docs/WINDOWS_READINESS.md`](docs/WINDOWS_READINESS.md) for Windows verification notes, [`docs/WINDOWS_SMOKE_TEST.md`](docs/WINDOWS_SMOKE_TEST.md) for manual runtime validation, [`docs/DEVICE_TEST_MATRIX.md`](docs/DEVICE_TEST_MATRIX.md) for real-device coverage, [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for failure recovery, [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) for release gates, and [`docs/WIRELESS_DEBUGGING.md`](docs/WIRELESS_DEBUGGING.md) for the Wireless Debugging support boundary.
