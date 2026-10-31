@@ -46,7 +46,6 @@ func withPadding(object fyne.CanvasObject, horizontal, vertical float32) fyne.Ca
 	return container.New(insetLayout{horizontal: horizontal, vertical: vertical}, object)
 }
 
-
 // fixedWidthLayout reserves a stable width for a child while allowing it to
 // fill the available height. This keeps a scrollable sidebar from collapsing
 // to the scroll widget's small default minimum width.
