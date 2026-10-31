@@ -920,7 +920,8 @@ func (ui *desktopUI) showLogs() {
 		ui.stopLogs()
 		ui.setStatus("Log stream stopped", false)
 	})
-	pause := widget.NewButton("Pause", func() {
+	var pause *widget.Button
+	pause = widget.NewButton("Pause", func() {
 		ui.logPaused = !ui.logPaused
 		if ui.logPaused {
 			pause.SetText("Resume")
