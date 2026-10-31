@@ -543,7 +543,8 @@ func (ui *desktopUI) showDevices() {
 					ui.selectedSerial = dev.Serial
 					_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = dev.Serial })
 					if option := ui.deviceOptionForSerial(dev.Serial); option != "" {
-						ui.deviceSelect.SetSelected(option)
+						ui.deviceSelect.Selected = option
+						ui.deviceSelect.Refresh()
 					}
 					ui.setStatus("Selected "+dev.Label(), false)
 					ui.showDevices()
