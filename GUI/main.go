@@ -25,22 +25,22 @@ type desktopUI struct {
 	win     fyne.Window
 	core    *App
 
-	deviceRefreshMu  sync.Mutex
-	devices          []Device
-	selectedSerial   string
-	deviceSelect     *widget.Select
-	status           *widget.Label
-	activity         *widget.ProgressBarInfinite
-	contentTitle     *widget.Label
-	contentScroll    *container.Scroll
-	navButtons       map[string]*widget.Button
-	sidebarPane      fyne.CanvasObject
-	sidebarSlot      *fyne.Container
-	sidebarToggle    *widget.Button
-	fullscreenButton *widget.Button
-	windowSizeSelect *widget.Select
-	shell            *fyne.Container
-	windowedSize     fyne.Size
+	deviceRefreshMu   sync.Mutex
+	devices           []Device
+	selectedSerial    string
+	deviceSelect      *widget.Select
+	deviceOptionSerial map[string]string
+	status            *widget.Label
+	activity          *widget.ProgressBarInfinite
+	contentTitle      *widget.Label
+	contentScroll     *container.Scroll
+	navButtons        map[string]*widget.Button
+	sidebarScroll     *container.Scroll
+	mainSplit         *container.Split
+	sidebarToggle     *widget.Button
+	fullscreenButton  *widget.Button
+	windowSizeSelect  *widget.Select
+	windowedSize      fyne.Size
 
 	monitorCancel  context.CancelFunc
 	logCancel      context.CancelFunc
@@ -58,9 +58,9 @@ func main() {
 	core := NewApp()
 	applyTheme(fyneApp, core.State().Theme)
 	win := fyneApp.NewWindow("AdbPureFlow " + version)
-	win.Resize(fyne.NewSize(1280, 820))
+	win.Resize(fyne.NewSize(1180, 700))
 
-	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core, windowedSize: fyne.NewSize(1280, 820)}
+	ui := &desktopUI{fyneApp: fyneApp, win: win, core: core, windowedSize: fyne.NewSize(1180, 700)}
 	win.SetContent(ui.buildShell())
 	ui.setupShortcuts()
 	win.SetOnClosed(func() {
@@ -91,21 +91,30 @@ func main() {
 
 func (ui *desktopUI) buildShell() fyne.CanvasObject {
 	ui.status = widget.NewLabel("Ready")
+	ui.status.Truncation = fyne.TextTruncateEllipsis
+	ui.status.Wrapping = fyne.TextWrapOff
 	ui.activity = widget.NewProgressBarInfinite()
 	ui.activity.Hide()
 	ui.contentTitle = widget.NewLabelWithStyle("Devices", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+
 	ui.contentScroll = container.NewVScroll(widget.NewLabel("Select a workspace"))
 	ui.contentScroll.Direction = container.ScrollVerticalOnly
 
-	ui.deviceSelect = widget.NewSelect([]string{"No devices"}, func(label string) {
-		for _, d := range ui.devices {
-			if label == d.Label() {
-				ui.selectedSerial = d.Serial
-				_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = d.Serial })
-				ui.setStatus("Selected "+d.Label(), false)
-				ui.showDevices()
-				return
+	ui.deviceOptionSerial = make(map[string]string)
+	ui.deviceSelect = widget.NewSelect([]string{"No devices"}, func(option string) {
+		serial, ok := ui.deviceOptionSerial[option]
+		if !ok || serial == "" {
+			return
+		}
+		for _, device := range ui.devices {
+			if device.Serial != serial {
+				continue
 			}
+			ui.selectedSerial = device.Serial
+			_ = ui.core.SaveState(func(state *AppState) { state.SelectedSerial = device.Serial })
+			ui.setStatus("Selected "+compactDeviceLabel(device), false)
+			ui.showDevices()
+			return
 		}
 	})
 	ui.deviceSelect.PlaceHolder = "Select device"
@@ -114,29 +123,24 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 		widget.NewLabelWithStyle(appName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		widget.NewLabel("Android device workstation"),
 	)
-	deviceTarget := container.NewBorder(nil, nil, widget.NewLabel("DEVICE"), nil, ui.deviceSelect)
-	actions := container.NewHBox(
+	ui.sidebarToggle = widget.NewButtonWithIcon("Hide sidebar", theme.MenuIcon(), ui.toggleSidebar)
+	ui.fullscreenButton = widget.NewButtonWithIcon("Full screen", theme.ViewFullScreenIcon(), ui.toggleFullscreen)
+
+	headerActions := container.NewHBox(ui.sidebarToggle, ui.fullscreenButton)
+	headerTop := container.NewBorder(nil, nil, brand, headerActions)
+	deviceActions := container.NewHBox(
 		widget.NewButtonWithIcon("Add Wireless", theme.ContentAddIcon(), ui.showWirelessDialog),
 		widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() { go ui.refreshDevices() }),
 	)
+	deviceRow := container.NewBorder(nil, nil, widget.NewLabel("DEVICE"), deviceActions, ui.deviceSelect)
+	top := withPadding(container.NewVBox(headerTop, deviceRow), 16, 8)
 
-	ui.sidebarToggle = widget.NewButtonWithIcon("Hide sidebar", theme.MenuIcon(), ui.toggleSidebar)
 	ui.windowSizeSelect = widget.NewSelect([]string{
 		"Compact · 1100 × 720",
-		"Default · 1280 × 820",
-		"Wide · 1480 × 920",
+		"Default · 1180 × 700",
+		"Wide · 1260 × 700",
 	}, ui.setWindowSize)
-	ui.windowSizeSelect.SetSelected("Default · 1280 × 820")
-	ui.fullscreenButton = widget.NewButtonWithIcon("Full screen", theme.ViewFullScreenIcon(), ui.toggleFullscreen)
-
-	windowControls := container.NewHBox(
-		ui.sidebarToggle,
-		deviceTarget,
-		actions,
-		ui.windowSizeSelect,
-		ui.fullscreenButton,
-	)
-	top := withPadding(container.NewBorder(nil, nil, brand, windowControls, nil), 18, 10)
+	ui.windowSizeSelect.Selected = "Default · 1180 × 700"
 
 	ui.navButtons = make(map[string]*widget.Button)
 	makeNavButton := func(name string, icon fyne.Resource, action func()) *widget.Button {
@@ -159,21 +163,22 @@ func (ui *desktopUI) buildShell() fyne.CanvasObject {
 		makeNavButton("Diagnostics", theme.WarningIcon(), ui.showDiagnostics),
 		makeNavButton("Help", theme.HelpIcon(), ui.showHelp),
 	)
-	sidebarScroll := container.NewVScroll(withPadding(nav, 12, 16))
-	sidebarScroll.Direction = container.ScrollVerticalOnly
-	ui.sidebarPane = container.New(fixedWidthLayout{width: 244}, sidebarScroll)
-	ui.sidebarSlot = container.NewMax(ui.sidebarPane)
+	ui.sidebarScroll = container.NewVScroll(withPadding(nav, 12, 16))
+	ui.sidebarScroll.Direction = container.ScrollVerticalOnly
 
 	center := container.NewBorder(
-		withPadding(ui.contentTitle, 22, 12),
+		withPadding(ui.contentTitle, 18, 8),
 		nil, nil, nil,
 		ui.contentScroll,
 	)
-	bottom := withPadding(container.NewBorder(nil, nil, ui.status, nil, ui.activity), 20, 8)
-	ui.shell = container.NewBorder(top, bottom, ui.sidebarSlot, nil, center)
+	ui.mainSplit = container.NewHSplit(ui.sidebarScroll, center)
+	ui.mainSplit.SetOffset(0.23)
+
+	bottom := withPadding(container.NewBorder(nil, nil, ui.status, nil, ui.activity), 16, 6)
+	shell := container.NewBorder(top, bottom, nil, nil, ui.mainSplit)
 
 	ui.showDevices()
-	return ui.shell
+	return shell
 }
 
 func (ui *desktopUI) setupShortcuts() {
@@ -205,9 +210,9 @@ func (ui *desktopUI) setupShortcuts() {
 	})
 }
 
-func (ui *desktopUI) setStatus(text string, busy bool) {
+func (ui *desktopUI) setStatus(message string, busy bool) {
 	fyne.Do(func() {
-		ui.status.SetText(text)
+		ui.status.SetText(shortenText(message, 52))
 		if busy {
 			ui.activity.Show()
 		} else {
@@ -247,29 +252,26 @@ func (ui *desktopUI) replaceContent(title string, obj fyne.CanvasObject) {
 			button.Refresh()
 		}
 
-		// A single page-level scroll host keeps tall workspaces (including
-		// Screen, Deploy, Diagnostics, and Help) reachable on short windows.
-		ui.contentScroll.Content = withPadding(obj, 22, 18)
+		// One vertical scroll viewport handles long form-like pages. Collection
+		// widgets such as List retain their own internal scrolling behavior.
+		ui.contentScroll.Content = withPadding(obj, 18, 14)
 		ui.contentScroll.ScrollToTop()
 		ui.contentScroll.Refresh()
 	})
 }
 
 func (ui *desktopUI) toggleSidebar() {
-	if ui.sidebarSlot == nil || ui.sidebarPane == nil {
+	if ui.sidebarScroll == nil || ui.mainSplit == nil {
 		return
 	}
-	if len(ui.sidebarSlot.Objects) > 0 {
-		ui.sidebarSlot.Objects = nil
+	if ui.sidebarScroll.Visible() {
+		ui.sidebarScroll.Hide()
 		ui.sidebarToggle.SetText("Show sidebar")
 	} else {
-		ui.sidebarSlot.Objects = []fyne.CanvasObject{ui.sidebarPane}
+		ui.sidebarScroll.Show()
 		ui.sidebarToggle.SetText("Hide sidebar")
 	}
-	ui.sidebarSlot.Refresh()
-	if ui.shell != nil {
-		ui.shell.Refresh()
-	}
+	ui.mainSplit.Refresh()
 }
 
 func (ui *desktopUI) setWindowSize(value string) {
@@ -277,11 +279,10 @@ func (ui *desktopUI) setWindowSize(value string) {
 	switch value {
 	case "Compact · 1100 × 720":
 		size = fyne.NewSize(1100, 720)
-	case "Wide · 1480 × 920":
-		size = fyne.NewSize(1480, 920)
+	case "Wide · 1260 × 700":
+		size = fyne.NewSize(1260, 700)
 	default:
-		value = "Default · 1280 × 820"
-		size = fyne.NewSize(1280, 820)
+		size = fyne.NewSize(1180, 700)
 	}
 
 	if ui.win.FullScreen() {
@@ -313,6 +314,70 @@ func (ui *desktopUI) toggleFullscreen() {
 	ui.windowSizeSelect.Disable()
 }
 
+func (ui *desktopUI) syncDeviceSelect(devices []Device, preferredSerial string) string {
+	options := make([]string, 0, len(devices))
+	ui.deviceOptionSerial = make(map[string]string, len(devices))
+	for _, device := range devices {
+		base := compactDeviceLabel(device)
+		option := base
+		for suffix := 2; ; suffix++ {
+			serial, exists := ui.deviceOptionSerial[option]
+			if !exists || serial == device.Serial {
+				break
+			}
+			option = fmt.Sprintf("%s (%d)", base, suffix)
+		}
+		options = append(options, option)
+		ui.deviceOptionSerial[option] = device.Serial
+	}
+	if len(options) == 0 {
+		options = []string{"No devices"}
+	}
+
+	selected := ReconcileSelectedDevice(preferredSerial, ui.core.State().SelectedSerial, devices)
+	ui.deviceSelect.Options = options
+	ui.deviceSelect.Selected = ""
+	for _, option := range options {
+		if ui.deviceOptionSerial[option] == selected && selected != "" {
+			ui.deviceSelect.Selected = option
+			break
+		}
+	}
+	ui.deviceSelect.Refresh()
+	return selected
+}
+
+func compactDeviceLabel(device Device) string {
+	name := strings.TrimSpace(device.DisplayName)
+	if name == "" {
+		name = strings.TrimSpace(device.Manufacturer + " " + device.Model)
+	}
+	if name == "" {
+		name = "Android device"
+	}
+	name = shortenText(name, 18)
+
+	serial := []rune(device.Serial)
+	if len(serial) > 6 {
+		serial = serial[len(serial)-6:]
+	}
+	if len(serial) == 0 {
+		return name
+	}
+	return fmt.Sprintf("%s · …%s", name, string(serial))
+}
+
+func shortenText(value string, limit int) string {
+	runes := []rune(strings.TrimSpace(value))
+	if limit <= 0 || len(runes) <= limit {
+		return string(runes)
+	}
+	if limit == 1 {
+		return "…"
+	}
+	return string(runes[:limit-1]) + "…"
+}
+
 func (ui *desktopUI) selectedDevice() (Device, bool) {
 	for _, d := range ui.devices {
 		if d.Serial == ui.selectedSerial {
@@ -334,22 +399,7 @@ func (ui *desktopUI) requireDevice() (Device, bool) {
 func (ui *desktopUI) applyDevices(devices []Device) {
 	fyne.Do(func() {
 		ui.devices = devices
-		labels := []string{}
-		for _, d := range devices {
-			labels = append(labels, d.Label())
-		}
-		if len(labels) == 0 {
-			labels = []string{"No devices"}
-		}
-		ui.deviceSelect.Options = labels
-		ui.deviceSelect.Refresh()
-		ui.selectedSerial = ReconcileSelectedDevice(ui.selectedSerial, ui.core.State().SelectedSerial, devices)
-		for _, d := range devices {
-			if d.Serial == ui.selectedSerial {
-				ui.deviceSelect.SetSelected(d.Label())
-				break
-			}
-		}
+		ui.selectedSerial = ui.syncDeviceSelect(devices, ui.selectedSerial)
 	})
 }
 
@@ -422,21 +472,15 @@ func (ui *desktopUI) refreshDevicesPassive(ctx context.Context) {
 	}
 	fyne.Do(func() {
 		previous := ui.selectedSerial
-		ui.devices = devices
-		labels := []string{}
 		selectedStillOnline := false
-		for _, d := range devices {
-			labels = append(labels, d.Label())
-			if d.Serial == previous && d.Status == DeviceOnline {
+		for _, device := range devices {
+			if device.Serial == previous && device.Status == DeviceOnline {
 				selectedStillOnline = true
+				break
 			}
 		}
-		if len(labels) == 0 {
-			labels = []string{"No devices"}
-		}
-		ui.deviceSelect.Options = labels
-		ui.deviceSelect.Refresh()
-		ui.selectedSerial = ReconcileSelectedDevice(previous, ui.core.State().SelectedSerial, devices)
+		ui.devices = devices
+		ui.selectedSerial = ui.syncDeviceSelect(devices, previous)
 		if previous != "" && !selectedStillOnline {
 			ui.setStatus("Selected device disconnected or unavailable", false)
 		}
@@ -1375,22 +1419,29 @@ func (ui *desktopUI) showSettings() {
 		_ = ui.core.SaveState(func(state *AppState) { state.Theme = value })
 	})
 	themeSelect.SetSelected(fallback(ui.core.State().Theme, "system"))
-	statePath := ui.core.stateStore.path
+
 	appearance := widget.NewCard("Appearance", "Choose how AdbPureFlow follows your desktop.", container.NewVBox(
 		widget.NewForm(widget.NewFormItem("Theme", themeSelect)),
 	))
+	window := widget.NewCard("Window layout", "Choose a safe preset or resize the window manually. The sidebar divider can also be dragged to change the workspace width.", container.NewVBox(
+		widget.NewForm(widget.NewFormItem("Window size", ui.windowSizeSelect)),
+		widget.NewLabel("Compact · 1100 × 720"),
+		widget.NewLabel("Default · 1180 × 700"),
+		widget.NewLabel("Wide · 1260 × 700"),
+	))
+	statePath := ui.core.stateStore.path
 	storage := widget.NewCard("Local preferences", "Only non-sensitive application preferences are stored here.", container.NewVBox(
 		widget.NewLabel("Preferences file:"),
 		widget.NewLabelWithStyle(statePath, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true}),
 		widget.NewLabel("Downloaded tools are stored in the current user's cache/config directory so a normal installation does not need administrator rights."),
 	))
 	help := widget.NewCard("Need a hand?", "Setup steps and troubleshooting are always available.", widget.NewButtonWithIcon("Open Help & Tutorials", theme.HelpIcon(), ui.showHelp))
-	ui.replaceContent("Settings", container.NewVBox(appearance, storage, help))
+	ui.replaceContent("Settings", container.NewVBox(appearance, window, storage, help))
 }
 
 func (ui *desktopUI) showHelp() {
 	guide := widget.NewCard("Start here", "A short route through the main workspaces.", widget.NewRichTextFromMarkdown("1. **Devices:** connect by USB or Add Wireless, then select your phone.\n2. **Screen:** start scrcpy mirroring, capture a screenshot, or record a session.\n3. **Apps:** search installed packages, launch, stop, clear data, or uninstall.\n4. **Logs:** stream logcat, filter entries, and export the visible results.\n5. **Deploy:** install an APK and optionally clear, launch, mirror, or open logs."))
-	shortcuts := widget.NewCard("Keyboard shortcuts", "Use the app without leaving the keyboard.", widget.NewRichTextFromMarkdown("- **Ctrl+K** opens the command palette.\n- **Ctrl+R** refreshes connected devices.\n- **Ctrl+B** shows or hides the sidebar.\n- **F11** toggles full screen; **Esc** returns to windowed mode."))
+	shortcuts := widget.NewCard("Keyboard shortcuts", "Use the app without leaving the keyboard.", widget.NewRichTextFromMarkdown("- **Ctrl+K** opens the command palette.\n- **Ctrl+R** refreshes connected devices.\n- **Ctrl+B** shows or hides the sidebar.\n- **F11** toggles full screen; **Esc** returns to windowed mode.\n- Drag the divider beside the sidebar to resize the workspace."))
 	recovery := widget.NewCard("When something does not work", "Start with Diagnostics before changing device settings.", widget.NewLabel("Check that USB debugging is enabled, accept the RSA prompt on the phone, and verify ADB/scrcpy in Diagnostics. Wireless pairing uses Android's pairing-code flow; QR pairing is not simulated."))
 	ui.replaceContent("Help & Tutorials", container.NewVBox(guide, shortcuts, recovery))
 }
