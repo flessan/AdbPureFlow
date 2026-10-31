@@ -25,22 +25,22 @@ type desktopUI struct {
 	win     fyne.Window
 	core    *App
 
-	deviceRefreshMu sync.Mutex
-	devices         []Device
-	selectedSerial  string
-	deviceSelect    *widget.Select
-	status          *widget.Label
-	activity        *widget.ProgressBarInfinite
-	contentTitle    *widget.Label
-	contentScroll   *container.Scroll
-	navButtons      map[string]*widget.Button
-	sidebarPane     fyne.CanvasObject
-	sidebarSlot     *fyne.Container
-	sidebarToggle   *widget.Button
+	deviceRefreshMu  sync.Mutex
+	devices          []Device
+	selectedSerial   string
+	deviceSelect     *widget.Select
+	status           *widget.Label
+	activity         *widget.ProgressBarInfinite
+	contentTitle     *widget.Label
+	contentScroll    *container.Scroll
+	navButtons       map[string]*widget.Button
+	sidebarPane      fyne.CanvasObject
+	sidebarSlot      *fyne.Container
+	sidebarToggle    *widget.Button
 	fullscreenButton *widget.Button
 	windowSizeSelect *widget.Select
-	shell           *fyne.Container
-	windowedSize    fyne.Size
+	shell            *fyne.Container
+	windowedSize     fyne.Size
 
 	monitorCancel  context.CancelFunc
 	logCancel      context.CancelFunc
