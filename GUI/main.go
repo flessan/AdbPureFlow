@@ -579,7 +579,9 @@ func (ui *desktopUI) showScreen() {
 			}
 			if recordPath != "" {
 				ui.setStatus("Mirror and recording active", false)
-				fyne.Do(func() { mirrorState.SetText("Mirror and recording are active. Stop Mirror finishes the recording file.") })
+				fyne.Do(func() {
+					mirrorState.SetText("Mirror and recording are active. Stop Mirror finishes the recording file.")
+				})
 			} else {
 				ui.setStatus("Mirror active in companion window", false)
 				fyne.Do(func() { mirrorState.SetText("Mirror active in scrcpy companion window.") })
@@ -862,6 +864,8 @@ func (ui *desktopUI) showApps() {
 	ui.replaceContent("Apps", container.NewBorder(header, nil, nil, nil, container.NewVScroll(listBox)))
 	load(false)
 }
+
+type packageActionFunc func(context.Context, string, string) (string, error)
 
 func (ui *desktopUI) confirmPackageAction(name, pkg, warning string, fn packageActionFunc) {
 	dialog.NewConfirm(name+"?", warning+"\n\nPackage: "+pkg, func(ok bool) {
