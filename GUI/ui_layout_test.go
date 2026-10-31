@@ -48,7 +48,22 @@ func TestCompactDeviceLabelStaysBounded(t *testing.T) {
 	}
 }
 
-func TestShortenTextBoundsStatusMessages(t *testing.T) {
+func TestCompactDeviceLabelUsesLocalAlias(t *testing.T) {
+	device := Device{
+		DisplayName: "Pixel 8",
+		Serial:      "emulator-5555123456",
+	}
+
+	got := compactDeviceLabelWithAlias(device, "My test phone")
+	if !strings.HasPrefix(got, "My test phone · …") {
+		t.Fatalf("device label = %q, want alias and serial suffix", got)
+	}
+	if !strings.HasSuffix(got, "123456") {
+		t.Fatalf("device label = %q, want last six serial characters", got)
+	}
+}
+
+func TestShortenTextBoundsLongLabels(t *testing.T) {
 	got := shortenText(strings.Repeat("status ", 20), 52)
 	if length := len([]rune(got)); length > 52 {
 		t.Fatalf("shortened status has %d runes, want at most 52", length)
