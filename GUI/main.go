@@ -1130,7 +1130,8 @@ func (ui *desktopUI) showLogs() {
 	if paused {
 		pause.SetText("Resume")
 	}
-	followLive := widget.NewButton("Follow live: On", func() {
+	var followLive *widget.Button
+	followLive = widget.NewButton("Follow live: On", func() {
 		ui.logMu.Lock()
 		ui.logAutoScroll = !ui.logAutoScroll
 		enabled := ui.logAutoScroll
