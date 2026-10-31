@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [v5.7.0] - 2026-10-31
 
 ### Changed
 
@@ -8,6 +8,8 @@
 - Reworked the GUI from a single APK installer window into a device-centric shell with Devices, Screen, Apps, Logs, Deploy, Workflows, Diagnostics, and Help workspaces.
 - Introduced typed domain models and a process-runner abstraction for ADB/scrcpy operations.
 - Rewrote documentation to match the desktop product direction.
+- Rebuilt the workspace shell with a draggable Fyne split view, independently scrollable sidebar, consistent page insets, active navigation, and safer window presets.
+- Reworked crowded action rows to wrap naturally at narrower window widths and kept long device labels and status messages from forcing the layout wider.
 
 ### Added
 
@@ -17,6 +19,9 @@
 - APK inspection with zip validation, SHA-256, size, and optional `aapt` badging metadata.
 - Apps workspace with searchable user-app list and actions for launch, force-stop, clear data, and uninstall.
 - Logs workspace with live `logcat` streaming, filtering, pause/resume, and clear behavior.
+- Export of filtered logcat entries and a live-follow toggle so older log entries can be inspected while streaming continues.
+- Keyboard shortcuts for command palette, device refresh, sidebar visibility, and fullscreen/windowed mode.
+- Clearer Apps and Deploy workspaces with package counts, an APK install shortcut, step progress, and recently used APKs.
 - Deploy workflow backed by an extensible Flow engine.
 - Diagnostics/Doctor checks for ADB, ADB server, devices/authorization, and scrcpy.
 - First-launch onboarding and Help & Tutorials content.
