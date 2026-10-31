@@ -18,7 +18,7 @@ This repository has started the migration from the earlier APK installer/mirror 
 - Recording start flow through native Save File dialog; output is verified when the scrcpy companion process exits.
 - APK drag/drop or file selection, APK zip validation, size/SHA-256, and `aapt`-powered package/version/SDK/permission metadata when Android build-tools are available.
 - Install/reinstall, launch, force stop, clear app data, uninstall, and searchable app list with user/system distinction when requested.
-- Live logcat streaming with readable rows, pause/resume/stop, text and level filtering, clear/reset, bounded visible buffer, export of the currently filtered entries, and raw technical detail preserved.
+- Live logcat streaming with readable rows, pause/resume/stop, text and level filtering, clear/reset, bounded visible buffer, export of the currently filtered entries, optional live-follow scrolling, and raw technical detail preserved.
 - Deploy workflow: install APK → optional clear data → launch → optional mirror/logs, with a saved recent-APK list for quick reuse.
 - Diagnostics/Doctor checks for ADB executable capability, device visibility/authorization, and scrcpy capability, plus an ADB server restart action.
 - Passive device monitoring with explicit selection when multiple devices are present.
