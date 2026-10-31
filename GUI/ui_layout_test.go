@@ -2,17 +2,18 @@ package main
 
 import (
 	"image/color"
+	"strings"
 	"testing"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 )
 
-func TestInsetLayoutAppliesPagePadding(t *testing.T) {
+func TestWithPaddingUsesFyneLayoutSizing(t *testing.T) {
 	object := canvas.NewRectangle(color.Black)
-	layout := insetLayout{horizontal: 20, vertical: 12}
+	padded := withPadding(object, 20, 12)
 
-	layout.Layout([]fyne.CanvasObject{object}, fyne.NewSize(400, 300))
+	padded.Resize(fyne.NewSize(400, 300))
 
 	if got, want := object.Position(), fyne.NewPos(20, 12); got != want {
 		t.Fatalf("position = %v, want %v", got, want)
@@ -22,26 +23,37 @@ func TestInsetLayoutAppliesPagePadding(t *testing.T) {
 	}
 }
 
-func TestInsetLayoutMinSizeIncludesPadding(t *testing.T) {
+func TestWithPaddingMinSizeIncludesInsets(t *testing.T) {
 	object := canvas.NewRectangle(color.Black)
-	layout := insetLayout{horizontal: 18, vertical: 10}
+	padded := withPadding(object, 18, 10)
 
-	got := layout.MinSize([]fyne.CanvasObject{object})
+	got := padded.MinSize()
 	if got.Width < 36 || got.Height < 20 {
 		t.Fatalf("minimum size %v does not include the configured padding", got)
 	}
 }
 
-func TestFixedWidthLayoutKeepsSidebarWidth(t *testing.T) {
-	object := canvas.NewRectangle(color.Black)
-	layout := fixedWidthLayout{width: 244}
-
-	layout.Layout([]fyne.CanvasObject{object}, fyne.NewSize(900, 640))
-
-	if got, want := object.Size(), fyne.NewSize(244, 640); got != want {
-		t.Fatalf("size = %v, want %v", got, want)
+func TestCompactDeviceLabelStaysBounded(t *testing.T) {
+	device := Device{
+		DisplayName: strings.Repeat("A very long Android model name ", 4),
+		Serial:      strings.Repeat("SERIAL", 8),
 	}
-	if got := layout.MinSize([]fyne.CanvasObject{object}); got.Width != 244 {
-		t.Fatalf("minimum width = %v, want 244", got.Width)
+
+	got := compactDeviceLabel(device)
+	if length := len([]rune(got)); length > 28 {
+		t.Fatalf("compact device label has %d runes (%q), want at most 28", length, got)
+	}
+	if !strings.Contains(got, "…") {
+		t.Fatalf("compact device label %q should indicate truncated values", got)
+	}
+}
+
+func TestShortenTextBoundsStatusMessages(t *testing.T) {
+	got := shortenText(strings.Repeat("status ", 20), 52)
+	if length := len([]rune(got)); length > 52 {
+		t.Fatalf("shortened status has %d runes, want at most 52", length)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Fatalf("shortened status %q should end with an ellipsis", got)
 	}
 }
